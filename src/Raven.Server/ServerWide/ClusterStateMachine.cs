@@ -708,11 +708,11 @@ namespace Raven.Server.ServerWide
         public async Task WaitForIndexNotification(long index, TimeSpan? timeout = null)
         {
             Task timeoutTask = null;
-            if (timeoutInMs.HasValue)
+            if (timeout.HasValue)
                 timeoutTask = TimeoutManager.WaitFor(timeout.Value, _token);
                 
             while (index > Volatile.Read(ref _lastModifiedIndex.Val) && 
-                    (timeoutInMs.HasValue == false || timeoutTask.IsCompleted == false))
+                    (timeout.HasValue == false || timeoutTask.IsCompleted == false))
             {
                 var task = _notifiedListeners.WaitAsync();
                 if (timeout.HasValue == false)
@@ -721,7 +721,7 @@ namespace Raven.Server.ServerWide
                 }
                 else if(timeoutTask == await Task.WhenAny(_notifiedListeners.WaitAsync(), timeoutTask))
                 {
-                    ThrowTimeoutException(timeoutInMs.Value, index);
+                    ThrowTimeoutException(timeout.Value, index);
                 }
             }
         }
