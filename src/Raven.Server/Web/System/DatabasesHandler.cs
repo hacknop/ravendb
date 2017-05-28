@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Raven.Client;
 using Raven.Client.Documents.Indexes;
 using Raven.Client.Documents.Replication;
@@ -14,6 +15,7 @@ using Raven.Server.Config;
 using Raven.Server.Documents;
 using Raven.Server.Extensions;
 using Raven.Server.Rachis;
+using Raven.Server.Json;
 using Raven.Server.Routing;
 using Raven.Server.ServerWide;
 using Raven.Server.ServerWide.Context;
@@ -64,9 +66,11 @@ namespace Raven.Server.Web.System
         [RavenAction("/topology", "GET", "/topology?name={databaseName:string}&url={url:string}")]
         public Task GetTopology()
         {
+
             var name = GetQueryStringValueAndAssertIfSingleAndNotEmpty("name");
+            GetQueryStringValueAndAssertIfSingleAndNotEmpty("name");
             var url = GetStringQueryString("url", false);
-            
+
             using (ServerStore.ContextPool.AllocateOperationContext(out TransactionOperationContext context))
             {
                 var dbId = Constants.Documents.Prefix + name;
@@ -114,7 +118,6 @@ namespace Raven.Server.Web.System
                     }
                 }
             }
-
             return Task.CompletedTask;
         }
 
