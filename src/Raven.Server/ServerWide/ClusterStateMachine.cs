@@ -174,7 +174,7 @@ namespace Raven.Server.ServerWide
                     case nameof(PutCertificateCommand):
                         PutValue<CertificateDefinition>(context, type, cmd, index, leader);
                         // Once the certificate is in the cluster, no need to keep it locally so we delete it.
-                        if (cmd.TryGet(nameof(PutCertificateCommand.Name), out string key)) //TODO iftah, also when install snapshot
+                        if (cmd.TryGet(nameof(PutCertificateCommand.Name), out string key))
                             DeleteLocalState(context, key);
                         break;
                     case nameof(PutClientConfigurationCommand):
@@ -626,6 +626,23 @@ namespace Raven.Server.ServerWide
             }
         }
 
+        public IEnumerable<string> ItemKeysStartingWith(TransactionOperationContext context, string prefix, int start, int take)
+        {
+            var items = context.Transaction.InnerTransaction.OpenTable(ItemsSchema, Items);
+
+            var dbKey = prefix.ToLowerInvariant();
+            using (Slice.From(context.Allocator, dbKey, out Slice loweredPrefix))
+            {
+                foreach (var result in items.SeekByPrimaryKeyPrefix(loweredPrefix, Slices.Empty, start))
+                {
+                    if (take-- <= 0)
+                        yield break;
+
+                    yield return GetCurrentItemKey(context, result.Value);
+                }
+            }
+        }
+
         public IEnumerable<string> GetDatabaseNames(TransactionOperationContext context, int start = 0, int take = int.MaxValue)
         {
             var items = context.Transaction.InnerTransaction.OpenTable(ItemsSchema, Items);
@@ -786,7 +803,7 @@ namespace Raven.Server.ServerWide
             }
         }
 
-        public override void OnSnapshotInstalled(TransactionOperationContext context, long lastIncludedIndex)
+        public override void OnSnapshotInstalled(TransactionOperationContext context, long lastIncludedIndex, ServerStore serverStore)
         {
             var listOfDatabaseName = GetDatabaseNames(context).ToList();
             //There is potentially a lot of work to be done here so we are responding to the change on a separate task.
@@ -799,6 +816,22 @@ namespace Raven.Server.ServerWide
                     foreach (var db in listOfDatabaseName)
                         onDatabaseChanged.Invoke(this, (db, lastIncludedIndex, "SnapshotInstalled"));
                 }, null);
+            }
+
+            // Lets read all the certificate keys from the cluster, and delete the matching ones from the local state
+            var clusterCertificateKeys = serverStore.Cluster.ItemKeysStartingWith(context, Constants.Certificates.Prefix, 0, int.MaxValue);
+
+            using (context.OpenWriteTransaction())
+            {
+                foreach (var key in clusterCertificateKeys)
+                {
+                    using (var localCertificate = GetLocalState(context, key))
+                    {
+                        if (localCertificate == null)
+                            continue;
+                        DeleteLocalState(context, key);
+                    }
+                }
             }
         }
     }
