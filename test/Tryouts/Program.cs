@@ -13,9 +13,13 @@ namespace Tryouts
             for (int i = 0; i < 100; i++)
             {   
                 Console.WriteLine(i);
-                using (var test = new SlowTests.Server.Replication.ReplicationWithRevisions())   
+                using (var test = new FastTests.Server.Documents.Revisions.RevisionsReplication())   
                 {
-                    test.CreateConflictAndResolveItIncreaseTheRevisions().Wait() ;
+                    test.GetRevisionsBinEntries(useSession: false).Wait() ;
+                }
+                using (var test = new FastTests.Server.Documents.Revisions.RevisionsReplication())
+                {
+                    test.GetRevisionsBinEntries(useSession: true).Wait();
                 }
             }
         }
