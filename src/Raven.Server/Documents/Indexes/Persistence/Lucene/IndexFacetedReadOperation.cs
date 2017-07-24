@@ -67,10 +67,10 @@ namespace Raven.Server.Documents.Indexes.Persistence.Lucene
             var facetsByName = new Dictionary<string, Dictionary<string, FacetValue>>();
 
             uint fieldsHash = 0;
-            if (query.IsDistinct)
+            if (query.Metadata.IsDistinct)
                 fieldsHash = CalculateQueryFieldsHash(query, context);
 
-            var baseQuery = GetLuceneQuery(query.Query, query.DefaultOperator, query.DefaultField, _analyzer);
+            var baseQuery = GetLuceneQuery(query.Metadata, query.QueryParameters, _analyzer);
             var returnedReaders = GetQueryMatchingDocuments(_searcher, baseQuery, _state);
 
             foreach (var facet in defaultFacets.Values)
@@ -80,7 +80,7 @@ namespace Raven.Server.Documents.Indexes.Persistence.Lucene
 
                 Dictionary<string, HashSet<IndexSearcherHolder.StringCollectionValue>> distinctItems = null;
                 HashSet<IndexSearcherHolder.StringCollectionValue> alreadySeen = null;
-                if (query.IsDistinct)
+                if (query.Metadata.IsDistinct)
                     distinctItems = new Dictionary<string, HashSet<IndexSearcherHolder.StringCollectionValue>>();
 
                 foreach (var readerFacetInfo in returnedReaders)
@@ -96,7 +96,7 @@ namespace Raven.Server.Documents.Indexes.Persistence.Lucene
 
                     foreach (var kvp in termsForField)
                     {
-                        if (query.IsDistinct)
+                        if (query.Metadata.IsDistinct)
                         {
                             if (distinctItems.TryGetValue(kvp.Key, out alreadySeen) == false)
                             {
@@ -139,13 +139,13 @@ namespace Raven.Server.Documents.Indexes.Persistence.Lucene
 
                 Dictionary<string, HashSet<IndexSearcherHolder.StringCollectionValue>> distinctItems = null;
                 HashSet<IndexSearcherHolder.StringCollectionValue> alreadySeen = null;
-                if (query.IsDistinct)
+                if (query.Metadata.IsDistinct)
                     distinctItems = new Dictionary<string, HashSet<IndexSearcherHolder.StringCollectionValue>>();
 
                 foreach (var readerFacetInfo in returnedReaders)
                 {
                     var termsForField = IndexedTerms.GetTermsAndDocumentsFor(readerFacetInfo.Reader, readerFacetInfo.DocBase, facet.Name, _indexName, _state);
-                    if (query.IsDistinct)
+                    if (query.Metadata.IsDistinct)
                     {
                         if (distinctItems.TryGetValue(range.Key, out alreadySeen) == false)
                         {
@@ -202,11 +202,11 @@ namespace Raven.Server.Documents.Indexes.Persistence.Lucene
         {
             uint hash = 0;
 
-            foreach (var field in query.FieldsToFetch)
+            foreach (var field in query.Metadata.SelectFields)
             {
-                fixed (char* p = field)
+                fixed (char* p = field.Name)
                 {
-                    hash = Hashing.XXHash32.Calculate((byte*)p, sizeof(char) * field.Length, hash);
+                    hash = Hashing.XXHash32.Calculate((byte*)p, sizeof(char) * field.Name.Length, hash);
                 }
             }
 
@@ -398,7 +398,7 @@ namespace Raven.Server.Documents.Indexes.Persistence.Lucene
             double o1 = nSize + mSize;
             double o2 = nSize * Math.Log(mSize, 2);
 
-            var isDistinct = query.IsDistinct;
+            var isDistinct = query.Metadata.IsDistinct;
             var result = new IntersectDocs();
             if (needToApplyAggregation)
             {
@@ -454,7 +454,7 @@ namespace Raven.Server.Documents.Indexes.Persistence.Lucene
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool IsDistinctValue(int docId, HashSet<IndexSearcherHolder.StringCollectionValue> alreadySeen, FacetQueryServerSide query, uint fieldsHash, JsonOperationContext context)
         {
-            var fields = _currentStateHolder.GetFieldsValues(docId, fieldsHash, query.FieldsToFetch, context, _state);
+            var fields = _currentStateHolder.GetFieldsValues(docId, fieldsHash, query.Metadata.SelectFields, context, _state);
             return alreadySeen.Add(fields);
         }
 

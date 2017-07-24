@@ -1599,7 +1599,7 @@ namespace Raven.Server.Documents.Indexes
 
             MarkQueried(DocumentDatabase.Time.GetUtcNow());
 
-            AssertQueryDoesNotContainFieldsThatAreNotIndexed(query);
+            AssertQueryDoesNotContainFieldsThatAreNotIndexed(query.Metadata);
 
             Transformer transformer = null;
             if (string.IsNullOrEmpty(query.Transformer) == false)
@@ -1744,15 +1744,9 @@ namespace Raven.Server.Documents.Indexes
                 SetState(IndexState.Normal);
 
             MarkQueried(DocumentDatabase.Time.GetUtcNow());
-
-            // TODO arek
-            //AssertQueryDoesNotContainFieldsThatAreNotIndexed(query);
-
-            if ("".Length == 0)
-                throw new NotImplementedException("TODO arek - faceted queries");
+            AssertQueryDoesNotContainFieldsThatAreNotIndexed(query.Metadata);
 
             using (var marker = MarkQueryAsRunning(query, token))
-
             {
                 var result = new FacetedQueryResult();
 
@@ -1961,8 +1955,7 @@ namespace Raven.Server.Documents.Indexes
                 SetState(IndexState.Normal);
 
             MarkQueried(DocumentDatabase.Time.GetUtcNow());
-
-            AssertQueryDoesNotContainFieldsThatAreNotIndexed(query);
+            AssertQueryDoesNotContainFieldsThatAreNotIndexed(query.Metadata);
 
             TransactionOperationContext indexContext;
             using (var marker = MarkQueryAsRunning(query, token))
@@ -2043,9 +2036,9 @@ namespace Raven.Server.Documents.Indexes
             throw new InvalidOperationException($"Index '{Name} ({Etag})' is currently being compacted.");
         }
 
-        private void AssertQueryDoesNotContainFieldsThatAreNotIndexed(IndexQueryServerSide query)
+        private void AssertQueryDoesNotContainFieldsThatAreNotIndexed(QueryMetadata metadata)
         {
-            foreach (var field in query.Metadata.IndexFieldNames)
+            foreach (var field in metadata.IndexFieldNames)
             {
                 var f = field;
 
@@ -2055,9 +2048,9 @@ namespace Raven.Server.Documents.Indexes
                     throw new ArgumentException($"The field '{f}' is not indexed, cannot query on fields that are not indexed");
             }
 
-            if (query.Metadata.OrderBy != null)
+            if (metadata.OrderBy != null)
             {
-                foreach (var sortedField in query.Metadata.OrderBy)
+                foreach (var sortedField in metadata.OrderBy)
                 {
                     var f = sortedField.Name;
                     if (f == Constants.Documents.Indexing.Fields.IndexFieldScoreName)
