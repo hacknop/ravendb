@@ -36,11 +36,11 @@ namespace Tryouts
             {
                 Console.Clear();
                 Console.WriteLine(i);
-                using (var test = new SlowTests.MailingList.LazyCount())
+                using (var test = new SlowTests.Issues.RavenDB_3166())
                 {
                     try
                     {
-                        test.CanLazilyCountOnSearchAgainstStaticIndex_Embedded();
+                        test.QueryOnDictionaryWithDateTimeAsValueShouldWork();
                     }
                     catch (Exception e)
                     {
