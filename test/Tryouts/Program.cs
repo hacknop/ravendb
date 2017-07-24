@@ -35,11 +35,11 @@ namespace Tryouts
             {
                 Console.Clear();
                 Console.WriteLine(i);
-                using (var test = new FastTests.Server.Documents.Revisions.RevisionsReplication())
+                using (var test = new FastTests.Client.Query())
                 {
                     try
                     {
-                        test.RevisionsOrder().Wait();
+                        test.Query_By_Index();
                     }
                     catch (Exception e)
                     {
