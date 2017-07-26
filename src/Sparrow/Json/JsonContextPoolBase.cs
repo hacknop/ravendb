@@ -88,25 +88,16 @@ namespace Sparrow.Json
         public IDisposable AllocateOperationContext(out T context)
         {
             _cts.Token.ThrowIfCancellationRequested();
-            var currentThread = _contextPool.Value;
+            ContextStack currentThread = _contextPool.Value;
             if (TryReuseExistingContextFrom(currentThread, out context, out IDisposable returnContext))
                 return returnContext;
-
-            // couldn't find it on our own thread, let us try and steal from other threads
-            foreach (var otherThread in _contextPool.Values)
-            {
-                if (otherThread == currentThread)
-                    continue;
-                if (TryReuseExistingContextFrom(otherThread, out context, out returnContext))
-                    return returnContext;
-            }
 
             // no choice, got to create it
             context = CreateContext();
             return new ReturnRequestContext
             {
-                Parent = this,
-                Context = context
+                Parent = currentThread,
+                Context = context,
             };
         }
 
@@ -127,7 +118,7 @@ namespace Sparrow.Json
                 context.Renew();
                 disposable = new ReturnRequestContext
                 {
-                    Parent = this,
+                    Parent = stack,
                     Context = context
                 };
                 return true;
@@ -143,7 +134,7 @@ namespace Sparrow.Json
         private class ReturnRequestContext : IDisposable
         {
             public T Context;
-            public JsonContextPoolBase<T> Parent;
+            public ContextStack Parent;
 
             public void Dispose()
             {
@@ -151,31 +142,17 @@ namespace Sparrow.Json
                 Interlocked.Exchange(ref Context.InUse, 0);
                 Context.InPoolSince = DateTime.UtcNow;
 
-                Parent.Push(Context);
-            }
-
-        }
-
-        private void Push(T context)
-        {
-            ContextStack threadHeader;
-            try
-            {
-                threadHeader = _contextPool.Value;
-            }
-            catch (ObjectDisposedException)
-            {
-                context.Dispose();
-                return;
-            }
-            while (true)
-            {
-                var current = threadHeader.Head;
-                var newHead = new StackNode<T> { Value = context, Next = current };
-                if (Interlocked.CompareExchange(ref threadHeader.Head, newHead, current) == current)
-                    return;
+                while (true)
+                {
+                    var current = Parent.Head;
+                    var newHead = new StackNode<T> { Value = Context, Next = current };
+                    if (Interlocked.CompareExchange(ref Parent.Head, newHead, current) == current)
+                        return;
+                }
             }
         }
+
+     
 
         public void Dispose()
         {
