@@ -105,15 +105,13 @@ namespace Sparrow
         /// </remarks>
         public delegate T Factory();
 
-        public const int Buckets = 16;
+        public const int Buckets = 128;
 
         // Storage for the pool objects. The first item is stored in a dedicated field because we
         // expect to be able to satisfy most requests from it.
         private readonly CacheAwareElement[] _firstItems;
         private readonly int _bucketsMask;
         private readonly Element[] _items;
-        private readonly int _itemsMask;
-        private readonly int _cacheLineOffset;
 
         // factory is stored for the lifetime of the pool. We will call this only when pool needs to
         // expand. compared to "new T()", Func gives more flexibility to implementers and faster
@@ -178,11 +176,9 @@ namespace Sparrow
                 size = Math.Max(16, size); 
 
                 bucketsSize = Buckets;
-                _cacheLineOffset = size / Buckets;
             }
 
             _items = new Element[size];
-            _itemsMask = size - 1;
             _bucketsMask = bucketsSize - 1;            
             _firstItems = new CacheAwareElement[bucketsSize];
         }
@@ -224,10 +220,7 @@ namespace Sparrow
             T inst = firstItem.Value;
             if (inst == null || inst != Interlocked.CompareExchange(ref firstItem.Value, null, inst))
             {
-                if (typeof(TProcessAwareBehavior) == typeof(ThreadAwareBehavior))
-                    inst = AllocateSlow(threadIndex);
-                else
-                    inst = AllocateSlow();
+                inst = AllocateSlow();
             }
 
 #if DETECT_LEAKS
@@ -240,30 +233,6 @@ namespace Sparrow
 #endif
 #endif
             return inst;
-        }
-
-        private T AllocateSlow(int threadIndex)
-        {
-            var items = _items;
-
-            int offset = _cacheLineOffset * threadIndex;
-            for (int i = 0; i < items.Length; i++)
-            {
-                ref var item = ref items[(i + offset) & _itemsMask];
-
-                // Note that the initial read is optimistically not synchronized. That is intentional. 
-                // We will interlock only when we have a candidate. in a worst case we may miss some
-                // recently returned objects. Not a big deal.
-
-                T inst = item.Value;
-                if (inst != null)
-                {
-                    if (inst == Interlocked.CompareExchange(ref item.Value, null, inst))
-                        return inst;
-                }
-            }
-
-            return CreateInstance();
         }
 
         private T AllocateSlow()
@@ -319,10 +288,7 @@ namespace Sparrow
                 return;
             }
 
-            if (typeof(TProcessAwareBehavior) == typeof(ThreadAwareBehavior))
-                FreeSlow(obj, threadIndex);
-            else
-                FreeSlow(obj);
+            FreeSlow(obj);
         }
 
         private void FreeSlow(T obj)
@@ -332,26 +298,6 @@ namespace Sparrow
             {
                 ref var item = ref items[i];
                 
-                if (item.Value == null)
-                {
-                    // Intentionally not using interlocked here. 
-                    // In a worst case scenario two objects may be stored into same slot.
-                    // It is very unlikely to happen and will only mean that one of the objects will get collected.
-                    item.Value = obj;
-                    break;
-                }
-            }
-        }
-
-        private void FreeSlow(T obj, int threadIndex)
-        {
-            var items = _items;
-            
-            int offset = _cacheLineOffset * threadIndex;
-            for (int i = 0; i < items.Length; i++)
-            {
-                ref var item = ref items[(i + offset) & _itemsMask];
-
                 if (item.Value == null)
                 {
                     // Intentionally not using interlocked here. 
