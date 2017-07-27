@@ -54,7 +54,6 @@ namespace Raven.Client.Documents.Session
         {
             using (var writer = new BlittableJsonWriter(context, documentInfo))
             {
-
                 var serializer = conventions.CreateSerializer();
 
                 serializer.Serialize(writer, entity);

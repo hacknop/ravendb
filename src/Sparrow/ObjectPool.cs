@@ -13,6 +13,8 @@
 
 using System.Diagnostics.Contracts;
 using System.Reflection;
+using System.Runtime.InteropServices;
+using Sparrow.Binary;
 using Sparrow.Utils;
 
 namespace Sparrow
@@ -44,12 +46,21 @@ namespace Sparrow
     /// Rationale: 
     ///    If there is no intent for reusing the object, do not use pool - just use "new". 
     /// </summary>
-    public class ObjectPool<T> : ObjectPool<T, NoResetSupport<T>>
+    public class ObjectPool<T> : ObjectPool<T, NoResetSupport<T>, NonThreadAwareBehavior>
         where T : class
     {
-        public ObjectPool(Factory factory) : base(factory) {}
+        public ObjectPool(Factory factory) : base(factory) { }
 
-        public ObjectPool(Factory factory, int size) : base(factory, size) {}
+        public ObjectPool(Factory factory, int size) : base(factory, size) { }
+    }
+
+    public class ObjectPool<T, TResetBehavior> : ObjectPool<T, TResetBehavior, NonThreadAwareBehavior>
+        where T : class
+        where TResetBehavior : struct, IResetSupport<T>
+    {
+        public ObjectPool(Factory factory) : base(factory) { }
+
+        public ObjectPool(Factory factory, int size) : base(factory, size) { }
     }
 
     /// <summary>
@@ -69,9 +80,10 @@ namespace Sparrow
     /// Rationale: 
     ///    If there is no intent for reusing the object, do not use pool - just use "new". 
     /// </summary>
-    public class ObjectPool<T, TResetBehavior>
+    public class ObjectPool<T, TResetBehavior, TProcessAwareBehavior>
         where T : class
         where TResetBehavior : struct, IResetSupport<T>
+        where TProcessAwareBehavior : struct, IProcessAwareBehavior
     {
         private static readonly TResetBehavior Behavior = new TResetBehavior();
 
@@ -80,16 +92,28 @@ namespace Sparrow
             internal T Value;
         }
 
+        [StructLayout(LayoutKind.Sequential, Size = 128)]
+        private struct CacheAwareElement
+        {
+            public readonly long _pad1, _pad2, _pad3;
+            public T Value;
+        }
+
         /// <remarks>
         /// Not using System.Func{T} because this file is linked into the (debugger) Formatter,
         /// which does not have that type (since it compiles against .NET 2.0).
         /// </remarks>
         public delegate T Factory();
 
+        public const int Buckets = 16;
+
         // Storage for the pool objects. The first item is stored in a dedicated field because we
         // expect to be able to satisfy most requests from it.
-        private T _firstItem;
+        private readonly CacheAwareElement[] _firstItems;
+        private readonly int _bucketsMask;
         private readonly Element[] _items;
+        private readonly int _itemsMask;
+        private readonly int _cacheLineOffset;
 
         // factory is stored for the lifetime of the pool. We will call this only when pool needs to
         // expand. compared to "new T()", Func gives more flexibility to implementers and faster
@@ -145,7 +169,22 @@ namespace Sparrow
         {
             Debug.Assert(size >= 1);
             _factory = factory;
-            _items = new Element[size - 1];
+
+            int bucketsSize = 1;
+            if (typeof(TProcessAwareBehavior) == typeof(ThreadAwareBehavior))
+            {
+                // PERF: We will always have power of two pools to make operations a lot faster. 
+                size = Bits.NextPowerOf2(size);
+                size = Math.Max(16, size); 
+
+                bucketsSize = Buckets;
+                _cacheLineOffset = size / Buckets;
+            }
+
+            _items = new Element[size];
+            _itemsMask = size - 1;
+            _bucketsMask = bucketsSize - 1;            
+            _firstItems = new CacheAwareElement[bucketsSize];
         }
 
         private T CreateInstance()
@@ -155,9 +194,9 @@ namespace Sparrow
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ObjectPoolContext<T, TResetBehavior> AllocateInContext()
+        public ObjectPoolContext<T, TResetBehavior, TProcessAwareBehavior> AllocateInContext()
         {
-            return new ObjectPoolContext<T, TResetBehavior>(this, Allocate());
+            return new ObjectPoolContext<T, TResetBehavior, TProcessAwareBehavior>(this, Allocate());
         }
 
         /// <summary>
@@ -171,14 +210,24 @@ namespace Sparrow
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T Allocate()
         {
+            int threadIndex = 0;
+            if (typeof(TProcessAwareBehavior) == typeof(ThreadAwareBehavior))
+                threadIndex = Environment.CurrentManagedThreadId & _bucketsMask;
+
             // PERF: Examine the first element. If that fails, AllocateSlow will look at the remaining elements.
             // Note that the initial read is optimistically not synchronized. That is intentional. 
             // We will interlock only when we have a candidate. in a worst case we may miss some
             // recently returned objects. Not a big deal.
-            T inst = _firstItem;
-            if (inst == null || inst != Interlocked.CompareExchange(ref _firstItem, null, inst))
+
+            ref var firstItem = ref _firstItems[threadIndex];
+
+            T inst = firstItem.Value;
+            if (inst == null || inst != Interlocked.CompareExchange(ref firstItem.Value, null, inst))
             {
-                inst = AllocateSlow();
+                if (typeof(TProcessAwareBehavior) == typeof(ThreadAwareBehavior))
+                    inst = AllocateSlow(threadIndex);
+                else
+                    inst = AllocateSlow();
             }
 
 #if DETECT_LEAKS
@@ -191,7 +240,31 @@ namespace Sparrow
 #endif
 #endif
             return inst;
-        }  
+        }
+
+        private T AllocateSlow(int threadIndex)
+        {
+            var items = _items;
+
+            int offset = _cacheLineOffset * threadIndex;
+            for (int i = 0; i < items.Length; i++)
+            {
+                ref var item = ref items[(i + offset) & _itemsMask];
+
+                // Note that the initial read is optimistically not synchronized. That is intentional. 
+                // We will interlock only when we have a candidate. in a worst case we may miss some
+                // recently returned objects. Not a big deal.
+
+                T inst = item.Value;
+                if (inst != null)
+                {
+                    if (inst == Interlocked.CompareExchange(ref item.Value, null, inst))
+                        return inst;
+                }
+            }
+
+            return CreateInstance();
+        }
 
         private T AllocateSlow()
         {
@@ -231,17 +304,25 @@ namespace Sparrow
 
             Behavior.Reset(obj);
 
-            if (_firstItem == null)
+            int threadIndex = 0;
+            if (typeof(TProcessAwareBehavior) == typeof(ThreadAwareBehavior))
+                threadIndex = Environment.CurrentManagedThreadId & _bucketsMask;
+
+            ref var firstItem = ref _firstItems[threadIndex];
+            
+            if (firstItem.Value == null)
             {
                 // Intentionally not using interlocked here. 
                 // In a worst case scenario two objects may be stored into same slot.
                 // It is very unlikely to happen and will only mean that one of the objects will get collected.
-                _firstItem = obj;
+                firstItem.Value = obj;
+                return;
             }
+
+            if (typeof(TProcessAwareBehavior) == typeof(ThreadAwareBehavior))
+                FreeSlow(obj, threadIndex);
             else
-            {
                 FreeSlow(obj);
-            }
         }
 
         private void FreeSlow(T obj)
@@ -249,12 +330,34 @@ namespace Sparrow
             var items = _items;
             for (int i = 0; i < items.Length; i++)
             {
-                if (items[i].Value == null)
+                ref var item = ref items[i];
+                
+                if (item.Value == null)
                 {
                     // Intentionally not using interlocked here. 
                     // In a worst case scenario two objects may be stored into same slot.
                     // It is very unlikely to happen and will only mean that one of the objects will get collected.
-                    items[i].Value = obj;
+                    item.Value = obj;
+                    break;
+                }
+            }
+        }
+
+        private void FreeSlow(T obj, int threadIndex)
+        {
+            var items = _items;
+            
+            int offset = _cacheLineOffset * threadIndex;
+            for (int i = 0; i < items.Length; i++)
+            {
+                ref var item = ref items[(i + offset) & _itemsMask];
+
+                if (item.Value == null)
+                {
+                    // Intentionally not using interlocked here. 
+                    // In a worst case scenario two objects may be stored into same slot.
+                    // It is very unlikely to happen and will only mean that one of the objects will get collected.
+                    item.Value = obj;
                     break;
                 }
             }
@@ -321,6 +424,12 @@ namespace Sparrow
     }
 
 
+    public interface IProcessAwareBehavior
+    { }
+    
+    public struct ThreadAwareBehavior : IProcessAwareBehavior { }
+    public struct NonThreadAwareBehavior : IProcessAwareBehavior { }
+
     public interface IResetSupport<in T> where T : class
     {
         void Reset(T value);
@@ -359,15 +468,37 @@ namespace Sparrow
         }
     }
 
-    public struct ObjectPoolContext<T, TR> : IDisposable 
+    public struct ObjectPoolContext<T, TR> : IDisposable
         where T : class
         where TR : struct, IResetSupport<T>
     {
-        private readonly ObjectPool<T, TR> _owner;
+        private readonly ObjectPool<T, TR, NonThreadAwareBehavior> _owner;
         public readonly T Value;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal ObjectPoolContext(ObjectPool<T, TR> owner, T value )
+        internal ObjectPoolContext(ObjectPool<T, TR, NonThreadAwareBehavior> owner, T value)
+        {
+            this._owner = owner;
+            this.Value = value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Dispose()
+        {
+            this._owner.Free(Value);
+        }
+    }
+
+    public struct ObjectPoolContext<T, TR, TPA> : IDisposable
+        where T : class
+        where TR : struct, IResetSupport<T>
+        where TPA : struct, IProcessAwareBehavior
+    {
+        private readonly ObjectPool<T, TR, TPA> _owner;
+        public readonly T Value;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal ObjectPoolContext(ObjectPool<T, TR, TPA> owner, T value)
         {
             this._owner = owner;
             this.Value = value;
