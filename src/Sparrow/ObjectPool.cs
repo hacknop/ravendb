@@ -166,6 +166,9 @@ namespace Sparrow
         private readonly int _bucketsMask;
 
         private T _firstElement;
+        private int _itemTopCounter;
+        private int _itemBottomCounter;
+        private readonly uint _itemsMask;
         private readonly Element[] _items;
 
         // factory is stored for the lifetime of the pool. We will call this only when pool needs to
@@ -230,10 +233,11 @@ namespace Sparrow
                 size = Math.Max(16, size); 
                 
                 _bucketsMask = Buckets - 1;
-                _firstItems = new CacheAwareElement[Buckets];
+                _firstItems = new CacheAwareElement[Buckets];                
             }                        
 
             _items = new Element[size];
+            _itemsMask = (uint) size - 1;
         }
 
         private T CreateInstance()
@@ -293,24 +297,23 @@ namespace Sparrow
 #endif
 #endif
             return inst;
-        }
+        }       
 
         private T AllocateSlow()
         {
             var items = _items;
 
-            for (int i = 0; i < items.Length; i++)
+            if (_itemBottomCounter < _itemTopCounter)
             {
-                // Note that the initial read is optimistically not synchronized. That is intentional. 
-                // We will interlock only when we have a candidate. in a worst case we may miss some
-                // recently returned objects. Not a big deal.
-                T inst = items[i].Value;
+                uint claim = (uint)Interlocked.Increment(ref _itemBottomCounter) & _itemsMask;
+
+                T inst = items[claim].Value;
                 if (inst != null)
                 {
-                    if (inst == Interlocked.CompareExchange(ref items[i].Value, null, inst))
-                    {
+                    // WARNING: In a absurdly fast loop this can still fail to get a proper, that is why 
+                    // we still use a compare exchange operation instead of using the reference.
+                    if (inst == Interlocked.CompareExchange(ref items[claim].Value, null, inst))
                         return inst;
-                    }
                 }
             }
 
@@ -358,18 +361,16 @@ namespace Sparrow
         private void FreeSlow(T obj)
         {
             var items = _items;
-            for (int i = 0; i < items.Length; i++)
+
+            uint claim = (uint)Interlocked.Increment(ref _itemTopCounter) & _itemsMask;
+
+            ref var item = ref items[claim];
+            if (item.Value == null)
             {
-                ref var item = ref items[i];
-                
-                if (item.Value == null)
-                {
-                    // Intentionally not using interlocked here. 
-                    // In a worst case scenario two objects may be stored into same slot.
-                    // It is very unlikely to happen and will only mean that one of the objects will get collected.
-                    item.Value = obj;
-                    break;
-                }
+                // Intentionally not using interlocked here. 
+                // In a worst case scenario two objects may be stored into same slot.
+                // It is very unlikely to happen and will only mean that one of the objects will get collected.
+                item.Value = obj;
             }
         }
 
