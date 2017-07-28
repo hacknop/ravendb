@@ -26,7 +26,7 @@ namespace Sparrow.Json
 
         protected JsonContextPoolBase()
         {
-            _contextPool = new ObjectPool<T, JsonOperationContextResetBehavior, ThreadAwareBehavior>(CreateContext, 64);
+            _contextPool = new ObjectPool<T, JsonOperationContextResetBehavior, ThreadAwareBehavior>(CreateContext, 1024);
 
             LowMemoryNotification.Instance?.RegisterLowMemoryHandler(this);
         }
