@@ -24,9 +24,11 @@ namespace Sparrow.Json
 
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
+        private const int PoolSize = 2048;
+
         protected JsonContextPoolBase()
         {
-            _contextPool = new ObjectPool<T, JsonOperationContextResetBehavior, ThreadAwareBehavior>(CreateContext, 1024);
+            _contextPool = new ObjectPool<T, JsonOperationContextResetBehavior, ThreadAwareBehavior>(CreateContext, PoolSize);
 
             LowMemoryNotification.Instance?.RegisterLowMemoryHandler(this);
         }
@@ -47,7 +49,7 @@ namespace Sparrow.Json
             // more work to be done, and we want to release resources
             // to the system
 
-            _contextPool = new ObjectPool<T, JsonOperationContextResetBehavior, ThreadAwareBehavior>(CreateContext, 64);
+            _contextPool = new ObjectPool<T, JsonOperationContextResetBehavior, ThreadAwareBehavior>(CreateContext, PoolSize);
         }
 
         public IDisposable AllocateOperationContext(out T context)
