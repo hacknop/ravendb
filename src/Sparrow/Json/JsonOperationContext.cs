@@ -649,10 +649,10 @@ namespace Sparrow.Json
             }
         }
 
-        private async Task<BlittableJsonReaderObject> ParseToMemoryAsync(Stream stream, string documentId, BlittableJsonDocumentBuilder.UsageMode mode, CancellationToken? token = null)
+        private Task<BlittableJsonReaderObject> ParseToMemoryAsync(Stream stream, string documentId, BlittableJsonDocumentBuilder.UsageMode mode, CancellationToken? token = null)
         {
             using (GetManagedBuffer(out ManagedPinnedBuffer bytes))
-                return await ParseToMemoryAsync(stream, documentId, mode, bytes, token);
+                return ParseToMemoryAsync(stream, documentId, mode, bytes, token);
         }
 
         public async Task<BlittableJsonReaderObject> ParseToMemoryAsync(Stream stream, string documentId, BlittableJsonDocumentBuilder.UsageMode mode, ManagedPinnedBuffer bytes,
