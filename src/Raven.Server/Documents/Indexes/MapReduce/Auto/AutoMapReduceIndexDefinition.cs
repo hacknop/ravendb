@@ -73,7 +73,6 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Auto
                 writer.WritePropertyName(nameof(field.Name));
                 writer.WriteString(field.Name);
                 writer.WriteComma();
-
                 writer.WriteEndObject();
 
                 first = false;
@@ -160,7 +159,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Auto
                     Name = name,
                     Storage = FieldStorage.Yes,
                     Indexing = FieldIndexing.Default,
-                    Aggregation = (AggregationOperation)aggregationAsInt
+                    Aggregation = (AggregationOperation)aggregationAsInt,
                 };
 
                 mapFields[i] = field;

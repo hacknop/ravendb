@@ -80,6 +80,7 @@ namespace Raven.Server.ServerWide.Commands.Indexes
 
             var result = new Dictionary<string, AutoIndexDefinition.AutoIndexFieldOptions>();
             foreach (var kvp in fields)
+            {
                 result[kvp.Key] = new AutoIndexDefinition.AutoIndexFieldOptions
                 {
                     TermVector = kvp.Value.TermVector,
@@ -90,6 +91,7 @@ namespace Raven.Server.ServerWide.Commands.Indexes
                     Suggestions = null,
                     MapReduceOperation = kvp.Value.Aggregation
                 };
+            }
 
             return result;
         }

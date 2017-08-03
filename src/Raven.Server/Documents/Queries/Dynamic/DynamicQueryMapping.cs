@@ -31,11 +31,19 @@ namespace Raven.Server.Documents.Queries.Dynamic
             if (IsMapReduce == false)
             {
                 return new AutoMapIndexDefinition(ForCollection, MapFields.Select(field =>
-                    new IndexField
                     {
-                        Name = field.Name,
-                        Storage = FieldStorage.No,
-                    }).ToArray());
+                        var indexField = new IndexField
+                        {
+                            Name = field.Name,
+                            Storage = FieldStorage.No
+                        };
+
+                        if (field.IsFullTextSearch)
+                            indexField.Indexing = FieldIndexing.Analyzed;
+
+                        return indexField;
+                    }
+                ).ToArray());
             }
 
             if (MapFields.Length == 0)
@@ -45,13 +53,20 @@ namespace Raven.Server.Documents.Queries.Dynamic
                 throw new InvalidOperationException("Invalid dynamic map-reduce query mapping. There is no group by field specified.");
 
             return new AutoMapReduceIndexDefinition(ForCollection, MapFields.Select(field =>
-                    new IndexField
+                {
+                    var indexField = new IndexField
                     {
                         Name = field.Name,
                         Storage = FieldStorage.No,
-                        Aggregation = field.AggregationOperation,
-                    }).ToArray(),
-                    GroupByFields.Select(field =>
+                        Aggregation = field.AggregationOperation
+                    };
+
+                    if (field.IsFullTextSearch)
+                        indexField.Indexing = FieldIndexing.Analyzed;
+
+                    return indexField;
+                }).ToArray(),
+                GroupByFields.Select(field =>
                     new IndexField
                     {
                         Name = field,
@@ -85,14 +100,19 @@ namespace Raven.Server.Documents.Queries.Dynamic
                 ForCollection = query.Metadata.CollectionName
             };
 
-            var mapFields = new Dictionary<string, DynamicQueryMappingItem>(StringComparer.OrdinalIgnoreCase);
+            var mapFields = new Dictionary<string, DynamicQueryMappingItem>();
 
             foreach (var field in query.Metadata.IndexFieldNames)
             {
                 if (field == Constants.Documents.Indexing.Fields.DocumentIdFieldName)
                     continue;
 
-                mapFields[field] = new DynamicQueryMappingItem(field, AggregationOperation.None);
+                var mapping = new DynamicQueryMappingItem(field, AggregationOperation.None);
+
+                if (query.Metadata.WhereFields.TryGetValue(field, out var whereField) && whereField.IsFullTextSearch)
+                    mapping.IsFullTextSearch = true;
+
+                mapFields[field] = mapping;
             }
 
             if (query.Metadata.OrderBy != null)

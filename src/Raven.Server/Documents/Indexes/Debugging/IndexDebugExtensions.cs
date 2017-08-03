@@ -433,7 +433,16 @@ namespace Raven.Server.Documents.Indexes.Debugging
                 case IndexType.AutoMap:
                     return ((AutoMapIndex)self).Definition.MapFields.Keys.ToArray();
                 case IndexType.AutoMapReduce:
-                    return ((AutoMapReduceIndex)self).Definition.GroupByFields.Keys.ToArray();
+                    var mapReduceList = new List<string>();
+                    foreach (var mapping in ((AutoMapReduceIndex)self).Definition.MapFields)
+                    {
+                        mapReduceList.Add(mapping.Key);
+                    }
+                    foreach (var mapping in ((AutoMapReduceIndex)self).Definition.GroupByFields)
+                    {
+                        mapReduceList.Add(mapping.Key);
+                    }
+                    return mapReduceList.ToArray();
 
                 default:
                     throw new ArgumentException("Unknown index type");
