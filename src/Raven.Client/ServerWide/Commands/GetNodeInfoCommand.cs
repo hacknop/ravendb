@@ -15,6 +15,13 @@ namespace Raven.Client.ServerWide.Commands
 
     public class GetNodeInfoCommand : RavenCommand<NodeInfo>
     {
+        private readonly JsonOperationContext _ctx;
+
+        public GetNodeInfoCommand(JsonOperationContext ctx)
+        {
+            _ctx = ctx;
+        }
+
         public override HttpRequestMessage CreateRequest(JsonOperationContext ctx, ServerNode node, out string url)
         {
             url = $"{node.Url}/cluster/node-info";
@@ -30,7 +37,7 @@ namespace Raven.Client.ServerWide.Commands
             if (response == null)
                 return;
 
-            Result = JsonDeserializationClient.NodeInfo(response);
+            Result = JsonDeserializationClient.NodeInfo(_ctx, response);
         }
 
         public override bool IsReadRequest => true;

@@ -17,20 +17,22 @@ namespace Raven.Client.ServerWide.Operations
 
         public RavenCommand<DatabaseTopology> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new GetDatabaseTopologyCommand(_database);
+            return new GetDatabaseTopologyCommand(ctx, _database);
         }
     }
 
 
     public class GetDatabaseTopologyCommand : RavenCommand<DatabaseTopology>
     {
+        private readonly JsonOperationContext _ctx;
         private readonly string _database;
         private readonly DocumentConventions _conventions = new DocumentConventions();
 
         public override bool IsReadRequest => false;
 
-        public GetDatabaseTopologyCommand(string database)
+        public GetDatabaseTopologyCommand(JsonOperationContext ctx, string database)
         {
+            _ctx = ctx;
             _database = database;
         }
 
@@ -51,7 +53,8 @@ namespace Raven.Client.ServerWide.Operations
                 return;
             }
 
-            var rec = (DatabaseRecord)EntityToBlittable.ConvertToEntity(typeof(DatabaseRecord), "database-record", response, _conventions);
+            var rec = (DatabaseRecord)EntityToBlittable.ConvertToEntity(_ctx, 
+                typeof(DatabaseRecord), "database-record", response, _conventions);
             Result = rec.Topology;
         }
     }

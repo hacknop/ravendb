@@ -13,11 +13,13 @@ namespace Raven.Client.Documents.Commands
 {
     public class MoreLikeThisCommand : RavenCommand<MoreLikeThisQueryResult>
     {
+        private readonly JsonOperationContext _ctx;
         private readonly DocumentConventions _conventions;
         private readonly MoreLikeThisQuery _query;
 
-        public MoreLikeThisCommand(DocumentConventions conventions, MoreLikeThisQuery query)
+        public MoreLikeThisCommand(JsonOperationContext ctx, DocumentConventions conventions, MoreLikeThisQuery query)
         {
+            _ctx = ctx;
             _conventions = conventions ?? throw new ArgumentNullException(nameof(conventions));
             _query = query ?? throw new ArgumentNullException(nameof(query));
         }
@@ -55,7 +57,7 @@ namespace Raven.Client.Documents.Commands
                 return;
             }
 
-            Result = JsonDeserializationClient.MoreLikeThisQueryResult(response);
+            Result = JsonDeserializationClient.MoreLikeThisQueryResult(_ctx, response);
         }
 
         public override bool IsReadRequest => true;

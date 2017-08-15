@@ -22,15 +22,17 @@ namespace Raven.Client.Documents.Operations.Indexes
 
         public RavenCommand<IndexErrors[]> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetIndexErrorsCommand(_indexNames);
+            return new GetIndexErrorsCommand(context, _indexNames);
         }
 
         private class GetIndexErrorsCommand : RavenCommand<IndexErrors[]>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly string[] _indexNames;
 
-            public GetIndexErrorsCommand(string[] indexNames)
+            public GetIndexErrorsCommand(JsonOperationContext ctx, string[] indexNames)
             {
+                _ctx = ctx;
                 _indexNames = indexNames;
             }
 
@@ -62,7 +64,8 @@ namespace Raven.Client.Documents.Operations.Indexes
                 var indexErrors = new IndexErrors[results.Length];
                 for (int i = 0; i < results.Length; i++)
                 {
-                    indexErrors[i] = JsonDeserializationClient.IndexErrors((BlittableJsonReaderObject)results[i]);
+                    var obj = results.GetValueTokenTupleByIndex(_ctx, i).Value;
+                    indexErrors[i] = JsonDeserializationClient.IndexErrors(_ctx, (BlittableJsonReaderObject)obj);
                 }
 
                 Result = indexErrors;

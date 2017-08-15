@@ -7,6 +7,8 @@ namespace Raven.Client.ServerWide.Commands
 {   
     public class IsDatabaseLoadedCommand : RavenCommand<IsDatabaseLoadedCommand.CommandResult>
     {
+        private readonly JsonOperationContext _ctx;
+
         public class CommandResult
         {
             public string DatabaseName;
@@ -14,6 +16,11 @@ namespace Raven.Client.ServerWide.Commands
         }
 
         public override bool IsReadRequest => true;
+
+        public IsDatabaseLoadedCommand(JsonOperationContext ctx)
+        {
+            _ctx = ctx;
+        }
 
         public override HttpRequestMessage CreateRequest(JsonOperationContext ctx, ServerNode node, out string url)
         {
@@ -31,7 +38,7 @@ namespace Raven.Client.ServerWide.Commands
             if (response == null)
                 ThrowInvalidResponse();
 
-            Result = JsonDeserializationClient.IsDatabaseLoadedCommandResult(response);
+            Result = JsonDeserializationClient.IsDatabaseLoadedCommandResult(_ctx, response);
         }
     }
 }

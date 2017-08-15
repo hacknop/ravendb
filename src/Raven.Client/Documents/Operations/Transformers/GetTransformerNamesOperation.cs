@@ -19,16 +19,18 @@ namespace Raven.Client.Documents.Operations.Transformers
 
         public RavenCommand<string[]> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetTransformerNamesCommand(_start, _pageSize);
+            return new GetTransformerNamesCommand(context, _start, _pageSize);
         }
 
         private class GetTransformerNamesCommand : RavenCommand<string[]>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly int _start;
             private readonly int _pageSize;
 
-            public GetTransformerNamesCommand(int start, int pageSize)
+            public GetTransformerNamesCommand(JsonOperationContext ctx, int start, int pageSize)
             {
+                _ctx = ctx;
                 _start = start;
                 _pageSize = pageSize;
             }
@@ -48,7 +50,7 @@ namespace Raven.Client.Documents.Operations.Transformers
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.GetTransformerNamesResponse(response).Results;
+                Result = JsonDeserializationClient.GetTransformerNamesResponse(_ctx, response).Results;
             }
 
             public override bool IsReadRequest => true;

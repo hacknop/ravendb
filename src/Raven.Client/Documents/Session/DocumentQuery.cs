@@ -1001,7 +1001,7 @@ namespace Raven.Client.Documents.Session
             var q = GetIndexQuery();
             var query = FacetQuery.Create(q, facetSetupDoc, null, facetStart, facetPageSize, Conventions);
 
-            var lazyFacetsOperation = new LazyFacetsOperation(Conventions, query);
+            var lazyFacetsOperation = new LazyFacetsOperation(TheSession.Context, Conventions, query);
             return ((DocumentSession)TheSession).AddLazyOperation(lazyFacetsOperation, (Action<FacetedQueryResult>)null);
         }
 
@@ -1010,7 +1010,7 @@ namespace Raven.Client.Documents.Session
             var q = GetIndexQuery();
             var query = FacetQuery.Create(q, null, facets, facetStart, facetPageSize, Conventions);
 
-            var lazyFacetsOperation = new LazyFacetsOperation(Conventions, query);
+            var lazyFacetsOperation = new LazyFacetsOperation(TheSession.Context, Conventions, query);
             return ((DocumentSession)TheSession).AddLazyOperation(lazyFacetsOperation, (Action<FacetedQueryResult>)null);
         }
 
@@ -1046,7 +1046,7 @@ namespace Raven.Client.Documents.Session
             }
 
 
-            var lazyQueryOperation = new LazyQueryOperation<T>(TheSession.Conventions, QueryOperation, AfterQueryExecutedCallback);
+            var lazyQueryOperation = new LazyQueryOperation<T>(TheSession.Context, TheSession.Conventions, QueryOperation, AfterQueryExecutedCallback);
 
             return ((DocumentSession)TheSession).AddLazyCountOperation(lazyQueryOperation);
         }
@@ -1062,7 +1062,7 @@ namespace Raven.Client.Documents.Session
                 QueryOperation = InitializeQueryOperation();
             }
 
-            var lazyQueryOperation = new LazyQueryOperation<T>(TheSession.Conventions, QueryOperation, AfterQueryExecutedCallback);
+            var lazyQueryOperation = new LazyQueryOperation<T>(TheSession.Context, TheSession.Conventions, QueryOperation, AfterQueryExecutedCallback);
             return ((DocumentSession)TheSession).AddLazyOperation(lazyQueryOperation, onEval);
         }
 

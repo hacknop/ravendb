@@ -13,11 +13,13 @@ namespace Raven.Client.Documents.Commands
 {
     public class GetFacetsCommand : RavenCommand<FacetedQueryResult>
     {
+        private readonly JsonOperationContext _context;
         private readonly DocumentConventions _conventions;
         private readonly FacetQuery _query;
 
         public GetFacetsCommand(DocumentConventions conventions, JsonOperationContext context, FacetQuery query)
         {
+            _context = context;
             _conventions = conventions ?? throw new ArgumentNullException(nameof(conventions));
             _query = query ?? throw new ArgumentNullException(nameof(query));
 
@@ -60,7 +62,7 @@ namespace Raven.Client.Documents.Commands
                 return;
             }
 
-            Result = JsonDeserializationClient.FacetedQueryResult(response);
+            Result = JsonDeserializationClient.FacetedQueryResult(_context, response);
         }
 
         public override bool IsReadRequest => true;

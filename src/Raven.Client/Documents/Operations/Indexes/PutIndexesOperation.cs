@@ -29,6 +29,7 @@ namespace Raven.Client.Documents.Operations.Indexes
 
         private class PutIndexesCommand : RavenCommand<PutIndexResult[]>
         {
+            private readonly JsonOperationContext _context;
             private readonly BlittableJsonReaderObject[] _indexToAdd;
 
             public PutIndexesCommand(DocumentConventions conventions, JsonOperationContext context, IndexDefinition[] indexesToAdd)
@@ -39,6 +40,7 @@ namespace Raven.Client.Documents.Operations.Indexes
                     throw new ArgumentNullException(nameof(indexesToAdd));
                 if (context == null)
                     throw new ArgumentNullException(nameof(context));
+                _context = context;
 
                 _indexToAdd = new BlittableJsonReaderObject[indexesToAdd.Length];
                 for (var i = 0; i < indexesToAdd.Length; i++)
@@ -72,7 +74,7 @@ namespace Raven.Client.Documents.Operations.Indexes
 
             public override void SetResponse(BlittableJsonReaderObject response, bool fromCache)
             {
-                Result = JsonDeserializationClient.PutIndexesResponse(response).Results;
+                Result = JsonDeserializationClient.PutIndexesResponse(_context, response).Results;
             }
 
             public override bool IsReadRequest => false;

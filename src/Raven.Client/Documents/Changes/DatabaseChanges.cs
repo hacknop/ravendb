@@ -505,7 +505,11 @@ namespace Raven.Client.Documents.Changes
                     }
                     break;
                 case nameof(OperationStatusChange):
-                    var operationStatusChange = OperationStatusChange.FromJson(value, _conventions);
+                    OperationStatusChange operationStatusChange;
+                    using (_requestExecutor.ContextPool.AllocateOperationContext(out var ctx))
+                    {
+                        operationStatusChange = OperationStatusChange.FromJson(ctx, value, _conventions);
+                    }
                     foreach (var state in states)
                     {
                         state.Send(operationStatusChange);

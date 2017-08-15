@@ -12,12 +12,14 @@ namespace Raven.Client.Documents.Session.Operations.Lazy
 {
     internal class LazySuggestionOperation : ILazyOperation
     {
+        private readonly InMemoryDocumentSessionOperations _session;
         private readonly SuggestionQuery _query;
         private readonly SuggestionOperation _operation;
         private readonly DocumentConventions _conventions;
 
         public LazySuggestionOperation(InMemoryDocumentSessionOperations session, SuggestionQuery query)
         {
+            _session = session;
             _query = query;
             _conventions = session.Conventions;
             _operation = new SuggestionOperation(session, query);
@@ -53,7 +55,7 @@ namespace Raven.Client.Documents.Session.Operations.Lazy
                 return;
             }
 
-            var result = JsonDeserializationClient.SuggestQueryResult((BlittableJsonReaderObject)response.Result);
+            var result = JsonDeserializationClient.SuggestQueryResult(_session.Context, (BlittableJsonReaderObject)response.Result);
             _operation.SetResult(result);
 
             Result = _operation.Complete();

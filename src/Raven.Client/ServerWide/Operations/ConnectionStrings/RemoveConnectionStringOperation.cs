@@ -19,16 +19,18 @@ namespace Raven.Client.ServerWide.Operations.ConnectionStrings
 
         public RavenCommand<RemoveConnectionStringResult> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new RemoveConnectionStringCommand(_connectionString, _databaseName);
+            return new RemoveConnectionStringCommand(context, _connectionString, _databaseName);
         }
 
         public class RemoveConnectionStringCommand : RavenCommand<RemoveConnectionStringResult>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly T _connectionString;
             private readonly string _databaseName;
 
-            public RemoveConnectionStringCommand(T connectionString, string databaseName)
+            public RemoveConnectionStringCommand(JsonOperationContext ctx, T connectionString, string databaseName)
             {
+                _ctx = ctx;
                 _connectionString = connectionString;
                 _databaseName = databaseName;
             }
@@ -52,7 +54,7 @@ namespace Raven.Client.ServerWide.Operations.ConnectionStrings
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.RemoveConnectionStringResult(response);
+                Result = JsonDeserializationClient.RemoveConnectionStringResult(_ctx, response);
             }
         }
     }

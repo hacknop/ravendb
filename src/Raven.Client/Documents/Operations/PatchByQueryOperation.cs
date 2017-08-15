@@ -77,6 +77,7 @@ namespace Raven.Client.Documents.Operations
 
         private class PatchByIndexCommand : RavenCommand<OperationIdResult>
         {
+            private readonly JsonOperationContext _context;
             private readonly DocumentConventions _conventions;
             private readonly IndexQuery _queryToUpdate;
             private readonly BlittableJsonReaderObject _patch;
@@ -86,6 +87,7 @@ namespace Raven.Client.Documents.Operations
             {
                 if (patch == null)
                     throw new ArgumentNullException(nameof(patch));
+                _context = context;
 
                 _conventions = conventions ?? throw new ArgumentNullException(nameof(conventions));
                 if (context == null)
@@ -146,7 +148,7 @@ namespace Raven.Client.Documents.Operations
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.OperationIdResult(response);
+                Result = JsonDeserializationClient.OperationIdResult(_context, response);
             }
 
             public override bool IsReadRequest => false;

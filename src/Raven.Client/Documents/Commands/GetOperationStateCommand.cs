@@ -20,7 +20,7 @@ namespace Raven.Client.Documents.Commands
 
         public RavenCommand<OperationState> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetOperationStateCommand(DocumentConventions.Default, _id, _isServerStoreOperation);
+            return new GetOperationStateCommand(context, DocumentConventions.Default, _id, _isServerStoreOperation);
         }
     }
 
@@ -28,12 +28,14 @@ namespace Raven.Client.Documents.Commands
     {
         public override bool IsReadRequest => true;
 
+        private readonly JsonOperationContext _ctx;
         private readonly DocumentConventions _conventions;
         private readonly long _id;
         private readonly bool _isServerStoreOperation;
 
-        public GetOperationStateCommand(DocumentConventions conventions, long id, bool isServerStoreOperation = false)
+        public GetOperationStateCommand(JsonOperationContext ctx, DocumentConventions conventions, long id, bool isServerStoreOperation = false)
         {
+            _ctx = ctx;
             _conventions = conventions;
             _id = id;
             _isServerStoreOperation = isServerStoreOperation;
@@ -56,7 +58,7 @@ namespace Raven.Client.Documents.Commands
             if (response == null)
                 return;
 
-            Result = (OperationState)_conventions.DeserializeEntityFromBlittable(typeof(OperationState), response);
+            Result = (OperationState)_conventions.DeserializeEntityFromBlittable(_ctx, typeof(OperationState), response);
         }
     }
 }

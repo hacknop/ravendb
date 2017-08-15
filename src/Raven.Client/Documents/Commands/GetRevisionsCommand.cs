@@ -11,13 +11,15 @@ namespace Raven.Client.Documents.Commands
     public class GetRevisionsCommand : RavenCommand<BlittableArrayResult>
     {
         private readonly string _id;
+        private readonly JsonOperationContext _ctx;
         private readonly int? _start;
         private readonly int? _pageSize;
         private readonly bool _metadataOnly;
 
-        public GetRevisionsCommand(string id, int? start, int? pageSize, bool metadataOnly = false)
+        public GetRevisionsCommand(JsonOperationContext ctx, string id, int? start, int? pageSize, bool metadataOnly = false)
         {
             _id = id ?? throw new ArgumentNullException(nameof(id));
+            _ctx = ctx;
             _start = start;
             _pageSize = pageSize;
             _metadataOnly = metadataOnly;
@@ -52,7 +54,7 @@ namespace Raven.Client.Documents.Commands
         {
             if (response == null)
                 throw new InvalidOperationException();
-            Result = JsonDeserializationClient.BlittableArrayResult(response);
+            Result = JsonDeserializationClient.BlittableArrayResult(_ctx, response);
         }
 
         public override bool IsReadRequest => true;

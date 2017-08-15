@@ -297,7 +297,7 @@ namespace Sparrow.Json.Parsing
                         {
                             continue;
                         }
-                        bjro.GetPropertyByIndex(propIndex, ref propDetails);
+                        bjro.GetPropertyByIndex(_ctx, propIndex, ref propDetails);
                         _elements.Push(bjro);
                         _elements.Push(propDetails.Value);
                         current = propDetails.Name;
@@ -330,7 +330,7 @@ namespace Sparrow.Json.Parsing
                             continue;
                         }
                         _elements.Push(bjra);
-                        current = bjra[modifications.SourceIndex];
+                        current = bjra.GetValueTokenTupleByIndex(_ctx, modifications.SourceIndex).Value;
                         continue;
                     }
                     current = modifications;

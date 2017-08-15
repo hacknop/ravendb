@@ -64,10 +64,10 @@ namespace Raven.Client.Documents.Session.Operations.Lazy
 
         public void HandleResponse(GetResponse response)
         {
-            var getDocumentResult = JsonDeserializationClient.GetDocumentResult((BlittableJsonReaderObject)response.Result);
+            var getDocumentResult = JsonDeserializationClient.GetDocumentResult(_sessionOperations.Context,(BlittableJsonReaderObject)response.Result);
 
             var finalResults = new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
-            foreach (BlittableJsonReaderObject document in getDocumentResult.Results)
+            foreach (BlittableJsonReaderObject document in getDocumentResult.Results.GetItems(_sessionOperations.Context))
             {
                 var newDocumentInfo = DocumentInfo.GetNewDocumentInfo(document);
                 _sessionOperations.DocumentsById.Add(newDocumentInfo);

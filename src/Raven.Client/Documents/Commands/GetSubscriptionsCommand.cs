@@ -8,11 +8,13 @@ namespace Raven.Client.Documents.Commands
 {
     public class GetSubscriptionsCommand : RavenCommand<SubscriptionState[]>
     {
+        private readonly JsonOperationContext _ctx;
         private readonly int _start;
         private readonly int _pageSize;
 
-        public GetSubscriptionsCommand(int start, int pageSize)
+        public GetSubscriptionsCommand(JsonOperationContext ctx, int start, int pageSize)
         {
+            _ctx = ctx;
             _start = start;
             _pageSize = pageSize;
         }
@@ -36,7 +38,7 @@ namespace Raven.Client.Documents.Commands
                 return;
             }
 
-            Result = JsonDeserializationClient.GetSubscriptionsResult(response).Results;
+            Result = JsonDeserializationClient.GetSubscriptionsResult(_ctx, response).Results;
         }
 
         public override bool IsReadRequest => true;

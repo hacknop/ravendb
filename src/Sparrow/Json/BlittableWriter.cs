@@ -31,7 +31,6 @@ namespace Sparrow.Json
             var reader = new BlittableJsonReaderObject(
                 ptr, 
                 size, 
-                _context, 
                 (UnmanagedWriteBuffer)(object)_unmanagedWriteBuffer);
 
             //we don't care to lose instance of write buffer,

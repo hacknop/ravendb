@@ -107,7 +107,7 @@ namespace Raven.Client.Documents.Session
                     Id = id,
                     ChangeVector = changeVector,
                     Document = value,
-                    Metadata = new MetadataAsDictionary(metadata)
+                    Metadata = new MetadataAsDictionary(Context, metadata)
                 };
             }
         }
@@ -120,14 +120,14 @@ namespace Raven.Client.Documents.Session
 
             //TODO - Investigate why ConvertToEntity fails if we don't call ReadObject before
             json = Context.ReadObject(json, id);
-            var entity = QueryOperation.Deserialize<T>(id, json, metadata, projectionFields, true, this);
+            var entity = QueryOperation.Deserialize<T>(Context, id, json, metadata, projectionFields, true, this);
 
             var streamResult = new StreamResult<T>
             {
                 ChangeVector = changeVector,
                 Id = id,
                 Document = entity,
-                Metadata = new MetadataAsDictionary(metadata)
+                Metadata = new MetadataAsDictionary(Context, metadata)
             };
             return streamResult;
         }

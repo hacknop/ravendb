@@ -309,7 +309,7 @@ namespace Sparrow.Json
                 case BlittableJsonToken.StartObject:
                     var obj = value as BlittableJsonReaderObject;
                     StartWriteObject();
-                    obj.AddItemsToStream(this); 
+                    obj.AddItemsToStream(_context, this); 
                     WriteObjectEnd();                
                     break;
                 case BlittableJsonToken.EmbeddedBlittable:
@@ -318,7 +318,7 @@ namespace Sparrow.Json
                 case BlittableJsonToken.StartArray:
                     var arr = value as BlittableJsonReaderArray;
                     StartWriteArray();
-                    arr?.AddItemsToStream(this);
+                    arr?.AddItemsToStream(_context, this);
                     WriteArrayEnd();
                     break;
                 default:

@@ -11,11 +11,18 @@ namespace Raven.Client.Documents.Operations.Indexes
     {
         public RavenCommand<IndexingStatus> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetIndexingStatusCommand();
+            return new GetIndexingStatusCommand(context);
         }
 
         private class GetIndexingStatusCommand : RavenCommand<IndexingStatus>
         {
+            private readonly JsonOperationContext _ctx;
+
+            public GetIndexingStatusCommand(JsonOperationContext ctx)
+            {
+                _ctx = ctx;
+            }
+
             public override HttpRequestMessage CreateRequest(JsonOperationContext ctx, ServerNode node, out string url)
             {
                 url = $"{node.Url}/databases/{node.Database}/indexes/status";
@@ -31,7 +38,7 @@ namespace Raven.Client.Documents.Operations.Indexes
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.IndexingStatus(response);
+                Result = JsonDeserializationClient.IndexingStatus(_ctx, response);
             }
 
             public override bool IsReadRequest => true;

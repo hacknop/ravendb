@@ -8,14 +8,16 @@ namespace Raven.Client.ServerWide.Commands
     public class GetTcpInfoCommand : RavenCommand<TcpConnectionInfo>
     {
         private readonly string _tag;
+        private readonly JsonOperationContext _ctx;
         private readonly string _dbName;
 
-        public GetTcpInfoCommand(string tag)
+        public GetTcpInfoCommand(JsonOperationContext ctx, string tag)
         {
+            _ctx = ctx;
             _tag = tag;
         }
 
-        public GetTcpInfoCommand(string tag, string dbName = null) : this(tag)
+        public GetTcpInfoCommand(JsonOperationContext ctx, string tag, string dbName = null) : this(ctx, tag)
         {
             _dbName = dbName;
         }
@@ -45,7 +47,8 @@ namespace Raven.Client.ServerWide.Commands
             if (response == null)
                 ThrowInvalidResponse();
 
-            Result = JsonDeserializationClient.TcpConnectionInfo(response);
+            Result = JsonDeserializationClient.TcpConnectionInfo(_ctx, 
+                response);
         }
 
         public ServerNode RequestedNode { get; private set; }

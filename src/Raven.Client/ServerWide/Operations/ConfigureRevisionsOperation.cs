@@ -21,17 +21,19 @@ namespace Raven.Client.ServerWide.Operations
         }
         public RavenCommand<ConfigureRevisionsOperationResult> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new ConfigureRevisionsCommand(_configuration, _databaseName);
+            return new ConfigureRevisionsCommand(ctx, _configuration, _databaseName);
         }
     }
 
     public class ConfigureRevisionsCommand : RavenCommand<ConfigureRevisionsOperationResult>
     {
+        private readonly JsonOperationContext _ctx;
         private readonly RevisionsConfiguration _configuration;
         private readonly string _databaseName;
 
-        public ConfigureRevisionsCommand(RevisionsConfiguration configuration, string databaseName)
+        public ConfigureRevisionsCommand(JsonOperationContext ctx, RevisionsConfiguration configuration, string databaseName)
         {
+            _ctx = ctx;
             _configuration = configuration;
             _databaseName = databaseName;
         }
@@ -60,7 +62,7 @@ namespace Raven.Client.ServerWide.Operations
             if (response == null)
                 ThrowInvalidResponse();
 
-            Result = JsonDeserializationClient.ConfigureRevisionsOperationResult(response);
+            Result = JsonDeserializationClient.ConfigureRevisionsOperationResult(_ctx, response);
         }
     }
 

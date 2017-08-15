@@ -26,6 +26,7 @@ namespace Raven.Client.Documents.Operations.Transformers
 
         private class PutTransformerCommand : RavenCommand<PutTransformerResult>
         {
+            private readonly JsonOperationContext _context;
             private readonly string _transformerName;
             private readonly BlittableJsonReaderObject _transformerDefinition;
 
@@ -37,6 +38,7 @@ namespace Raven.Client.Documents.Operations.Transformers
                     throw new ArgumentNullException(nameof(transformerDefinition));
                 if (context == null)
                     throw new ArgumentNullException(nameof(context));
+                _context = context;
                 _transformerName = transformerDefinition.Name ?? throw new ArgumentNullException(nameof(transformerDefinition.Name));
                 _transformerDefinition = EntityToBlittable.ConvertEntityToBlittable(transformerDefinition, conventions, context);
             }
@@ -59,7 +61,7 @@ namespace Raven.Client.Documents.Operations.Transformers
 
             public override void SetResponse(BlittableJsonReaderObject response, bool fromCache)
             {
-                Result = JsonDeserializationClient.PutTransformerResult(response);
+                Result = JsonDeserializationClient.PutTransformerResult(_context, response);
             }
 
             public override bool IsReadRequest => false;

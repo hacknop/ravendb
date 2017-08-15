@@ -20,15 +20,17 @@ namespace Raven.Client.ServerWide.Operations.ConnectionStrings
 
         public RavenCommand<GetConnectionStringsResult> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new GetConnectionStringCommand(_databaseName);
+            return new GetConnectionStringCommand(ctx, _databaseName);
         }
 
         public class GetConnectionStringCommand : RavenCommand<GetConnectionStringsResult>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly string _databaseName;
 
-            public GetConnectionStringCommand(string databaseName)
+            public GetConnectionStringCommand(JsonOperationContext ctx, string databaseName)
             {
+                _ctx = ctx;
                 _databaseName = databaseName;
             }
 
@@ -51,7 +53,7 @@ namespace Raven.Client.ServerWide.Operations.ConnectionStrings
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.GetConnectionStringsResult(response);
+                Result = JsonDeserializationClient.GetConnectionStringsResult(_ctx, response);
             }
         }
     }

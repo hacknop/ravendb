@@ -19,16 +19,18 @@ namespace Raven.Client.Documents.Operations.Indexes
 
         public RavenCommand<string[]> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetIndexNamesCommand(_start, _pageSize);
+            return new GetIndexNamesCommand(context, _start, _pageSize);
         }
 
         private class GetIndexNamesCommand : RavenCommand<string[]>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly int _start;
             private readonly int _pageSize;
 
-            public GetIndexNamesCommand(int start, int pageSize)
+            public GetIndexNamesCommand(JsonOperationContext ctx, int start, int pageSize)
             {
+                _ctx = ctx;
                 _start = start;
                 _pageSize = pageSize;
             }
@@ -48,7 +50,7 @@ namespace Raven.Client.Documents.Operations.Indexes
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.GetIndexNamesResponse(response).Results;
+                Result = JsonDeserializationClient.GetIndexNamesResponse(_ctx, response).Results;
             }
 
             public override bool IsReadRequest => true;

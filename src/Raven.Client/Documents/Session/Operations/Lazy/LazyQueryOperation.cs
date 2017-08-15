@@ -11,12 +11,14 @@ namespace Raven.Client.Documents.Session.Operations.Lazy
 {
     internal class LazyQueryOperation<T> : ILazyOperation
     {
+        private readonly JsonOperationContext _ctx;
         private readonly DocumentConventions _conventions;
         private readonly QueryOperation _queryOperation;
         private readonly Action<QueryResult> _afterQueryExecuted;
 
-        public LazyQueryOperation(DocumentConventions conventions, QueryOperation queryOperation, Action<QueryResult> afterQueryExecuted)
+        public LazyQueryOperation(JsonOperationContext ctx, DocumentConventions conventions, QueryOperation queryOperation, Action<QueryResult> afterQueryExecuted)
         {
+            _ctx = ctx;
             _conventions = conventions;
             _queryOperation = queryOperation;
             _afterQueryExecuted = afterQueryExecuted;
@@ -46,7 +48,7 @@ namespace Raven.Client.Documents.Session.Operations.Lazy
                 return;
             }
 
-            var queryResult = JsonDeserializationClient.QueryResult((BlittableJsonReaderObject)response.Result);
+            var queryResult = JsonDeserializationClient.QueryResult(_ctx, (BlittableJsonReaderObject)response.Result);
 
             HandleResponse(queryResult);
         }

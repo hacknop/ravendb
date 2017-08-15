@@ -2,6 +2,6 @@
 {
     public interface IFillFromBlittableJson
     {
-        void FillFromBlittableJson(BlittableJsonReaderObject json);
+        void FillFromBlittableJson(JsonOperationContext ctx, BlittableJsonReaderObject json);
     }
 }

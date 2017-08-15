@@ -7,10 +7,12 @@ namespace Raven.Client.ServerWide.Commands
 {
     public class GetTopologyCommand : RavenCommand<Topology>
     {
+        private readonly JsonOperationContext _ctx;
         private readonly string _forcedUrl;
 
-        public GetTopologyCommand(string forcedUrl = null)
+        public GetTopologyCommand(JsonOperationContext ctx, string forcedUrl = null)
         {
+            _ctx = ctx;
             _forcedUrl = forcedUrl;
         }
 
@@ -32,7 +34,7 @@ namespace Raven.Client.ServerWide.Commands
             if (response == null)
                 return;
 
-            Result = JsonDeserializationClient.Topology(response);
+            Result = JsonDeserializationClient.Topology(_ctx, response);
         }
 
         public override bool IsReadRequest => true;

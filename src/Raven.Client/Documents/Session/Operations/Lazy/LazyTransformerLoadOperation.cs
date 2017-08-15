@@ -11,6 +11,7 @@ namespace Raven.Client.Documents.Session.Operations.Lazy
 {
     internal class LazyTransformerLoadOperation<T> : ILazyOperation
     {
+        private readonly JsonOperationContext _ctx;
         private readonly string[] _ids;
         private readonly string _transformer;
 
@@ -18,8 +19,9 @@ namespace Raven.Client.Documents.Session.Operations.Lazy
 
         private readonly LoadTransformerOperation _loadTransformerOperation;
 
-        public LazyTransformerLoadOperation(string[] ids, string transformer, Dictionary<string, object> transformerParameters, LoadTransformerOperation loadTransformerOperation)
+        public LazyTransformerLoadOperation(JsonOperationContext ctx, string[] ids, string transformer, Dictionary<string, object> transformerParameters, LoadTransformerOperation loadTransformerOperation)
         {
+            _ctx = ctx;
             _ids = ids;
             _transformer = transformer;
             _transformerParameters = transformerParameters;
@@ -60,7 +62,7 @@ namespace Raven.Client.Documents.Session.Operations.Lazy
             }
 
             var multiLoadResult = response.Result != null
-                ? JsonDeserializationClient.GetDocumentResult((BlittableJsonReaderObject)response.Result)
+                ? JsonDeserializationClient.GetDocumentResult(_ctx, (BlittableJsonReaderObject)response.Result)
                 : null;
 
             HandleResponse(multiLoadResult);

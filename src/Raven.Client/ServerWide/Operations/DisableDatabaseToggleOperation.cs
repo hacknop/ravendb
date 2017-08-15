@@ -20,17 +20,18 @@ namespace Raven.Client.ServerWide.Operations
 
         public RavenCommand<DisableDatabaseToggleResult> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new DisableDatabaseToggleCommand(_databaseName, _ifDisableRequest);
+            return new DisableDatabaseToggleCommand(ctx, _databaseName, _ifDisableRequest);
         }
 
         public class DisableDatabaseToggleCommand : RavenCommand<DisableDatabaseToggleResult>
         {
-
+            private readonly JsonOperationContext _ctx;
             private readonly string _databaseName;
             private readonly bool _ifDisableRequest;
 
-            public DisableDatabaseToggleCommand(string databaseName, bool ifDisableRequest)
+            public DisableDatabaseToggleCommand(JsonOperationContext ctx, string databaseName, bool ifDisableRequest)
             {
+                _ctx = ctx;
                 _databaseName = databaseName;
                 _ifDisableRequest = ifDisableRequest;
             }
@@ -55,8 +56,8 @@ namespace Raven.Client.ServerWide.Operations
                     return; // never hit
                 }
 
-                var resultObject = databases[0] as BlittableJsonReaderObject;
-                Result = JsonDeserializationClient.DisableResourceToggleResult(resultObject);
+                var resultObject = databases.GetValueTokenTupleByIndex(_ctx, 0).Value as BlittableJsonReaderObject;
+                Result = JsonDeserializationClient.DisableResourceToggleResult(_ctx, resultObject);
             }
 
             public override bool IsReadRequest => false;

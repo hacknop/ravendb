@@ -18,15 +18,17 @@ namespace Raven.Client.Documents.Operations.Indexes
 
         public RavenCommand<OperationIdResult> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new CompactIndexCommand(_indexName);
+            return new CompactIndexCommand(context, _indexName);
         }
 
         private class CompactIndexCommand : RavenCommand<OperationIdResult>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly string _indexName;
 
-            public CompactIndexCommand(string indexName)
+            public CompactIndexCommand(JsonOperationContext ctx, string indexName)
             {
+                _ctx = ctx;
                 _indexName = indexName ?? throw new ArgumentNullException(nameof(indexName));
             }
 
@@ -47,7 +49,7 @@ namespace Raven.Client.Documents.Operations.Indexes
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.OperationIdResult(response);
+                Result = JsonDeserializationClient.OperationIdResult(_ctx,response);
             }
         }
     }

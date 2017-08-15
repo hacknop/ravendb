@@ -66,7 +66,7 @@ namespace Raven.Client.Documents.Subscriptions
             var requestExecutor = _store.GetRequestExecutor(database ?? _store.Database);
             requestExecutor.ContextPool.AllocateOperationContext(out JsonOperationContext context);
             
-            var command = new CreateSubscriptionCommand(subscriptionCreationOptions);
+            var command = new CreateSubscriptionCommand(context, subscriptionCreationOptions);
             await requestExecutor.ExecuteAsync(command, context).ConfigureAwait(false);
 
             return command.Result.Name;
@@ -95,7 +95,7 @@ namespace Raven.Client.Documents.Subscriptions
             var requestExecutor = _store.GetRequestExecutor(database ?? _store.Database);
             requestExecutor.ContextPool.AllocateOperationContext(out jsonOperationContext);
 
-            var command = new GetSubscriptionsCommand(start, take);
+            var command = new GetSubscriptionsCommand(jsonOperationContext, start, take);
             await requestExecutor.ExecuteAsync(command, jsonOperationContext).ConfigureAwait(false);
 
             return command.Result.ToList();
@@ -135,7 +135,7 @@ namespace Raven.Client.Documents.Subscriptions
             var requestExecutor = _store.GetRequestExecutor(database);
             requestExecutor.ContextPool.AllocateOperationContext(out JsonOperationContext context);
 
-            var command = new GetSubscriptionStateCommand(subscriptionName);
+            var command = new GetSubscriptionStateCommand(context, subscriptionName);
             await requestExecutor.ExecuteAsync(command, context).ConfigureAwait(false);
             return command.Result;
         }

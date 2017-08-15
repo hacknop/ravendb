@@ -12,11 +12,13 @@ namespace Raven.Client.Documents.Session.Operations.Lazy
 {
     internal class LazyFacetsOperation : ILazyOperation
     {
+        private readonly JsonOperationContext _ctx;
         private readonly DocumentConventions _conventions;
         private readonly FacetQuery _query;
 
-        public LazyFacetsOperation(DocumentConventions conventions, FacetQuery query)
+        public LazyFacetsOperation(JsonOperationContext ctx, DocumentConventions conventions, FacetQuery query)
         {
+            _ctx = ctx;
             _conventions = conventions ?? throw new ArgumentNullException(nameof(conventions));
             _query = query ?? throw new ArgumentNullException(nameof(query));
         }
@@ -45,7 +47,7 @@ namespace Raven.Client.Documents.Session.Operations.Lazy
                 return;
             }
 
-            Result = JsonDeserializationClient.FacetedQueryResult((BlittableJsonReaderObject)response.Result);
+            Result = JsonDeserializationClient.FacetedQueryResult(_ctx, (BlittableJsonReaderObject)response.Result);
         }
 
         private class FacetQueryContent : GetRequest.IContent

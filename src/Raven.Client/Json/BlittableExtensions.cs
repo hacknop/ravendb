@@ -7,17 +7,14 @@ namespace Raven.Client.Json
 {
     internal static class BlittableExtensions
     {
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="self"></param>
-        /// <param name="path"></param>
-        /// <param name="createSnapshots">Set to true if you want to modify selected objects</param>
-        /// <returns></returns>
-        public static IEnumerable<Tuple<object, object>> SelectTokenWithRavenSyntaxReturningFlatStructure(this BlittableJsonReaderBase self, string path, bool createSnapshots = false)
+        public static IEnumerable<Tuple<object, object>> SelectTokenWithRavenSyntaxReturningFlatStructure(
+            this BlittableJsonReaderBase self, 
+            JsonOperationContext ctx,
+            string path,
+            bool createSnapshots = false)
         {
             var pathParts = path.Split(new[] { "[]." }, StringSplitOptions.RemoveEmptyEntries);
-            var result = new BlittablePath(pathParts[0]).Evaluate(self, false);
+            var result = new BlittablePath(ctx, pathParts[0]).Evaluate(self, false);
 
             if (pathParts.Length == 1)
             {
@@ -34,12 +31,12 @@ namespace Raven.Client.Json
 
                 for (var i = 0; i < blitResult.Count; i++)
                 {
-                    blitResult.GetPropertyByIndex(i, ref prop);
+                    blitResult.GetPropertyByIndex(ctx, i, ref prop);
 
                     if (prop.Value is BlittableJsonReaderBase)
                     {
                         var itemAsBlittable = (BlittableJsonReaderBase)prop.Value;
-                        foreach (var subItem in itemAsBlittable.SelectTokenWithRavenSyntaxReturningFlatStructure(string.Join("[].", pathParts.Skip(1).ToArray())))
+                        foreach (var subItem in itemAsBlittable.SelectTokenWithRavenSyntaxReturningFlatStructure(ctx, string.Join("[].", pathParts.Skip(1).ToArray())))
                         {
                             yield return subItem;
                         }
@@ -55,12 +52,12 @@ namespace Raven.Client.Json
                 var blitResult = result as BlittableJsonReaderArray;
                 for (var i = 0; i < blitResult.Length; i++)
                 {
-                    var item = blitResult[i];
+                    var item = blitResult.GetValueTokenTupleByIndex(ctx, i).Value;
 
                     if (item is BlittableJsonReaderBase)
                     {
                         var itemAsBlittable = item as BlittableJsonReaderBase;
-                        foreach (var subItem in itemAsBlittable.SelectTokenWithRavenSyntaxReturningFlatStructure(string.Join("[].", pathParts.Skip(1).ToArray())))
+                        foreach (var subItem in itemAsBlittable.SelectTokenWithRavenSyntaxReturningFlatStructure(ctx, string.Join("[].", pathParts.Skip(1).ToArray())))
                         {
                             yield return subItem;
                         }

@@ -22,16 +22,18 @@ namespace Raven.Client.ServerWide.Operations
 
         public RavenCommand<UpdatePeriodicBackupOperationResult> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new UpdatePeriodicBackupCommand(_configuration, _databaseName);
+            return new UpdatePeriodicBackupCommand(ctx, _configuration, _databaseName);
         }
 
         public class UpdatePeriodicBackupCommand : RavenCommand<UpdatePeriodicBackupOperationResult>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly PeriodicBackupConfiguration _configuration;
             private readonly string _databaseName;
 
-            public UpdatePeriodicBackupCommand(PeriodicBackupConfiguration configuration, string databaseName)
+            public UpdatePeriodicBackupCommand(JsonOperationContext ctx, PeriodicBackupConfiguration configuration, string databaseName)
             {
+                _ctx = ctx;
                 _configuration = configuration;
                 _databaseName = databaseName;
             }
@@ -60,7 +62,7 @@ namespace Raven.Client.ServerWide.Operations
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.ConfigurePeriodicBackupOperationResult(response);
+                Result = JsonDeserializationClient.ConfigurePeriodicBackupOperationResult(_ctx, response);
             }
         }
     }

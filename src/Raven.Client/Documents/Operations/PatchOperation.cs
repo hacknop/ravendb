@@ -57,6 +57,7 @@ namespace Raven.Client.Documents.Operations
         public class PatchCommand : RavenCommand<PatchResult>
         {
             private readonly string _id;
+            private readonly JsonOperationContext _context;
             private readonly string _changeVector;
             private readonly BlittableJsonReaderObject _patch;
             private readonly bool _skipPatchIfChangeVectorMismatch;
@@ -76,6 +77,7 @@ namespace Raven.Client.Documents.Operations
                 if (context == null)
                     throw new ArgumentNullException(nameof(context));
                 _id = id ?? throw new ArgumentNullException(nameof(id));
+                _context = context;
                 _changeVector = changeVector;
                 _patch = EntityToBlittable.ConvertEntityToBlittable(new
                 {
@@ -116,7 +118,7 @@ namespace Raven.Client.Documents.Operations
                 if (response == null)
                     return;
 
-                Result = JsonDeserializationClient.PatchResult(response);
+                Result = JsonDeserializationClient.PatchResult(_context, response);
             }
         }
     }

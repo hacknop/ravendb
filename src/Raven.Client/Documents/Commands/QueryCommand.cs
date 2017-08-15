@@ -15,13 +15,15 @@ namespace Raven.Client.Documents.Commands
     {
         private readonly DocumentConventions _conventions;
         private readonly IndexQuery _indexQuery;
+        private readonly JsonOperationContext _ctx;
         private readonly bool _metadataOnly;
         private readonly bool _indexEntriesOnly;
 
-        public QueryCommand(DocumentConventions conventions, IndexQuery indexQuery, bool metadataOnly = false, bool indexEntriesOnly = false)
+        public QueryCommand(JsonOperationContext ctx, DocumentConventions conventions, IndexQuery indexQuery, bool metadataOnly = false, bool indexEntriesOnly = false)
         {
             _conventions = conventions ?? throw new ArgumentNullException(nameof(conventions));
             _indexQuery = indexQuery ?? throw new ArgumentNullException(nameof(indexQuery));
+            _ctx = ctx;
             _metadataOnly = metadataOnly;
             _indexEntriesOnly = indexEntriesOnly;
 
@@ -76,7 +78,7 @@ namespace Raven.Client.Documents.Commands
                 return;
             }
 
-            Result = JsonDeserializationClient.QueryResult(response);
+            Result = JsonDeserializationClient.QueryResult(_ctx, response);
 
             if (fromCache)
                 Result.DurationInMs = -1;

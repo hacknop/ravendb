@@ -19,15 +19,17 @@ namespace Raven.Client.Documents.Operations.Indexes
 
         public RavenCommand<IndexStats> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetIndexStatisticsCommand(_indexName);
+            return new GetIndexStatisticsCommand(context, _indexName);
         }
 
         private class GetIndexStatisticsCommand : RavenCommand<IndexStats>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly string _indexName;
 
-            public GetIndexStatisticsCommand(string indexName)
+            public GetIndexStatisticsCommand(JsonOperationContext ctx, string indexName)
             {
+                _ctx = ctx;
                 _indexName = indexName ?? throw new ArgumentNullException(nameof(indexName));
             }
 
@@ -46,7 +48,7 @@ namespace Raven.Client.Documents.Operations.Indexes
                 if (response == null)
                     ThrowInvalidResponse();
 
-                var results = JsonDeserializationClient.GetIndexStatisticsResponse(response).Results;
+                var results = JsonDeserializationClient.GetIndexStatisticsResponse(_ctx, response).Results;
                 if (results.Length != 1)
                     ThrowInvalidResponse();
 

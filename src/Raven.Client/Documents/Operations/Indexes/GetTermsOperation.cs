@@ -25,20 +25,22 @@ namespace Raven.Client.Documents.Operations.Indexes
 
         public RavenCommand<string[]> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetTermsCommand(_indexName, _field, _fromValue, _pageSize);
+            return new GetTermsCommand(context, _indexName, _field, _fromValue, _pageSize);
         }
 
         private class GetTermsCommand : RavenCommand<string[]>
         {
             private readonly string _indexName;
             private readonly string _field;
+            private readonly JsonOperationContext _ctx;
             private readonly string _fromValue;
             private readonly int? _pageSize;
 
-            public GetTermsCommand(string indexName, string field, string fromValue, int? pageSize)
+            public GetTermsCommand(JsonOperationContext ctx, string indexName, string field, string fromValue, int? pageSize)
             {
                 _indexName = indexName ?? throw new ArgumentNullException(nameof(indexName));
                 _field = field ?? throw new ArgumentNullException(nameof(field));
+                _ctx = ctx;
                 _fromValue = fromValue;
                 _pageSize = pageSize;
             }
@@ -58,7 +60,7 @@ namespace Raven.Client.Documents.Operations.Indexes
                 if (response == null)
                     ThrowInvalidResponse();
 
-                var result = JsonDeserializationClient.TermsQueryResult(response);
+                var result = JsonDeserializationClient.TermsQueryResult(_ctx, response);
                 var terms = result.Terms;
 
                 Result = terms.ToArray();

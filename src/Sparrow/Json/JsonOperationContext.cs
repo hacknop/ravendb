@@ -86,9 +86,17 @@ namespace Sparrow.Json
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe LazyStringValue AllocateStringValue(string str, byte* ptr, int size)
         {
-            if (_numberOfAllocatedStringsValues < _allocateStringValues.Count)
+            var count = _allocateStringValues.Count;
+            var x = _numberOfAllocatedStringsValues;
+            if (_numberOfAllocatedStringsValues < count)
             {
                 var lazyStringValue = _allocateStringValues[_numberOfAllocatedStringsValues++];
+                if (lazyStringValue == null)
+                {
+                    Console.Beep();
+                    Console.WriteLine("hhhhhhh---------------");
+                    Console.ReadLine();
+                }
                 Debug.Assert(lazyStringValue != null);
                 lazyStringValue.Renew(str, ptr, size);
                 return lazyStringValue;

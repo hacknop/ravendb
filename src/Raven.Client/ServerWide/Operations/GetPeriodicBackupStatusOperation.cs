@@ -21,18 +21,20 @@ namespace Raven.Client.ServerWide.Operations
 
         public RavenCommand<GetPeriodicBackupStatusOperationResult> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new GetPeriodicBackupStatusCommand(_databaseName, _taskId);
+            return new GetPeriodicBackupStatusCommand(ctx, _databaseName, _taskId);
         }
     }
 
     public class GetPeriodicBackupStatusCommand : RavenCommand<GetPeriodicBackupStatusOperationResult>
     {
         public override bool IsReadRequest => true;
+        private readonly JsonOperationContext _ctx;
         private readonly string _databaseName;
         private readonly long _taskId;
 
-        public GetPeriodicBackupStatusCommand(string databaseName, long taskId)
+        public GetPeriodicBackupStatusCommand(JsonOperationContext ctx, string databaseName, long taskId)
         {
+            _ctx = ctx;
             _databaseName = databaseName;
             _taskId = taskId;
         }
@@ -52,7 +54,7 @@ namespace Raven.Client.ServerWide.Operations
         {
             if(response == null)
                 ThrowInvalidResponse();
-            Result = JsonDeserializationClient.GetPeriodicBackupStatusOperationResult(response);
+            Result = JsonDeserializationClient.GetPeriodicBackupStatusOperationResult(_ctx, response);
         }
     }
 

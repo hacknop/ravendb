@@ -18,14 +18,14 @@ namespace Raven.Client.Documents.Session.Operations.Lazy
 {
     internal class LazyMoreLikeThisOperation<T> : ILazyOperation
     {
+        private readonly InMemoryDocumentSessionOperations _session;
         private readonly MoreLikeThisQuery _query;
         private readonly MoreLikeThisOperation _operation;
         private readonly DocumentConventions _conventions;
 
         public LazyMoreLikeThisOperation(InMemoryDocumentSessionOperations session, MoreLikeThisQuery query)
         {
-            if (session == null)
-                throw new ArgumentNullException(nameof(session));
+            _session = session ?? throw new ArgumentNullException(nameof(session));
 
             _query = query ?? throw new ArgumentNullException(nameof(query));
             _conventions = session.Conventions;
@@ -62,7 +62,7 @@ namespace Raven.Client.Documents.Session.Operations.Lazy
                 return;
             }
 
-            var result = JsonDeserializationClient.MoreLikeThisQueryResult((BlittableJsonReaderObject)response.Result);
+            var result = JsonDeserializationClient.MoreLikeThisQueryResult(_session.Context, (BlittableJsonReaderObject)response.Result);
             _operation.SetResult(result);
 
             Result = _operation.Complete<T>();

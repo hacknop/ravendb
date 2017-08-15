@@ -209,7 +209,7 @@ namespace Raven.Client.Documents.Session
                 return documentInfo.MetadataInstance;
 
             var metadataAsBlittable = documentInfo.Metadata;
-            var metadata = new MetadataAsDictionary(metadataAsBlittable);
+            var metadata = new MetadataAsDictionary(_context, metadataAsBlittable);
             documentInfo.MetadataInstance = metadata;
             return metadata;
         }
@@ -834,7 +834,7 @@ more responsive application.
 
         protected bool EntityChanged(BlittableJsonReaderObject newObj, DocumentInfo documentInfo, IDictionary<string, DocumentsChanges[]> changes)
         {
-            return BlittableOperation.EntityChanged(newObj, documentInfo, changes);
+            return BlittableOperation.EntityChanged(_context, newObj, documentInfo, changes);
         }
 
         public IDictionary<string, DocumentsChanges[]> WhatChanged()
@@ -1054,14 +1054,14 @@ more responsive application.
             if (includes == null || includes.Count == 0)
                 return;
 
-            foreach (BlittableJsonReaderObject result in results)
+            foreach (BlittableJsonReaderObject result in results.GetItems(_context))
             {
                 foreach (var include in includes)
                 {
                     if (include == Constants.Documents.Indexing.Fields.DocumentIdFieldName)
                         continue;
 
-                    IncludesUtil.Include(result, include, id =>
+                    IncludesUtil.Include(_context, result, include, id =>
                     {
                         if (id == null)
                             return false;
@@ -1098,7 +1098,7 @@ more responsive application.
                 var propDetail = new BlittableJsonReaderObject.PropertyDetails();
                 for (int index = 0; index < result.Count; index++)
                 {
-                    result.GetPropertyByIndex(index, ref propDetail, addObjectToCache: true);
+                    result.GetPropertyByIndex(_context, index, ref propDetail, addObjectToCache: true);
                     var jsonObj = propDetail.Value as BlittableJsonReaderObject;
                     if (jsonObj != null)
                     {
@@ -1129,7 +1129,7 @@ more responsive application.
 
         internal void HandleInternalMetadata(BlittableJsonReaderArray values)
         {
-            foreach (var nested in values)
+            foreach (var nested in values.GetItems(_context))
             {
                 var bObject = nested as BlittableJsonReaderObject;
                 if (bObject != null)
@@ -1149,10 +1149,10 @@ more responsive application.
 
         public bool CheckIfIdAlreadyIncluded(string[] ids, KeyValuePair<string, Type>[] includes)
         {
-            return CheckIfIdAlreadyIncluded(ids, includes.Select(x => x.Key));
+            return CheckIfIdAlreadyIncluded(ids, includes.Select(x => x.Key).ToArray());
         }
 
-        public bool CheckIfIdAlreadyIncluded(string[] ids, IEnumerable<string> includes)
+        public bool CheckIfIdAlreadyIncluded(string[] ids, string[] includes)
         {
             foreach (var id in ids)
             {
@@ -1173,7 +1173,7 @@ more responsive application.
                 foreach (var include in includes)
                 {
                     var hasAll = true;
-                    IncludesUtil.Include(documentInfo.Document, include, s =>
+                    IncludesUtil.Include(_context, documentInfo.Document, include, s =>
                     {
                         hasAll &= IsLoaded(s);
                         return true;
@@ -1187,7 +1187,7 @@ more responsive application.
 
         protected void RefreshInternal<T>(T entity, RavenCommand<GetDocumentResult> cmd, DocumentInfo documentInfo)
         {
-            var document = (BlittableJsonReaderObject)cmd.Result.Results[0];
+            var document = (BlittableJsonReaderObject)cmd.Result.Results.GetValueTokenTupleByIndex(_context, 0).Value;
             if (document == null)
                 throw new InvalidOperationException("Document '" + documentInfo.Id +
                                                     "' no longer exists and was probably deleted");

@@ -9,7 +9,7 @@ namespace Raven.Client.Documents.Operations
     {
         public RavenCommand<DatabaseStatistics> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetStatisticsCommand();
+            return new GetStatisticsCommand(context);
         }
     }
 }

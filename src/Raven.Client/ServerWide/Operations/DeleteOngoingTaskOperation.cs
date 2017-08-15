@@ -23,16 +23,18 @@ namespace Raven.Client.ServerWide.Operations
 
         public RavenCommand<ModifyOngoingTaskResult> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new DeleteOngoingTaskCommand(_database, _taskId, _taskType);
+            return new DeleteOngoingTaskCommand(ctx, _database, _taskId, _taskType);
         }
 
         private class DeleteOngoingTaskCommand : RavenCommand<ModifyOngoingTaskResult>
         {
             private readonly string _databaseName;
+            private readonly JsonOperationContext _ctx;
             private readonly long _taskId;
             private readonly OngoingTaskType _taskType;
 
             public DeleteOngoingTaskCommand(
+                JsonOperationContext ctx,
                 string database,
                 long taskId,
                 OngoingTaskType taskType
@@ -40,6 +42,7 @@ namespace Raven.Client.ServerWide.Operations
             )
             {
                 _databaseName = database ?? throw new ArgumentNullException(nameof(database));
+                _ctx = ctx;
                 _taskId = taskId;
                 _taskType = taskType;
             }
@@ -61,7 +64,7 @@ namespace Raven.Client.ServerWide.Operations
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.ModifyOngoingTaskResult(response);
+                Result = JsonDeserializationClient.ModifyOngoingTaskResult(_ctx, response);
             }
 
             public override bool IsReadRequest => false;

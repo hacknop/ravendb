@@ -21,19 +21,21 @@ namespace Raven.Client.ServerWide.Operations
 
         public RavenCommand<DatabasePutResult> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new AddDatabaseNodeCommand(_databaseName, _node);
+            return new AddDatabaseNodeCommand(context, _databaseName, _node);
         }
 
         private class AddDatabaseNodeCommand : RavenCommand<DatabasePutResult>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly string _databaseName;
             private readonly string _node;
 
-            public AddDatabaseNodeCommand(string databaseName, string node)
+            public AddDatabaseNodeCommand(JsonOperationContext ctx, string databaseName, string node)
             {
                 if (string.IsNullOrEmpty(databaseName))
                     throw new ArgumentNullException(databaseName);
 
+                _ctx = ctx;
                 _databaseName = databaseName;
                 _node = node;
             }
@@ -59,7 +61,7 @@ namespace Raven.Client.ServerWide.Operations
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.DatabasePutResult(response);
+                Result = JsonDeserializationClient.DatabasePutResult(_ctx, response);
             }
 
             public override bool IsReadRequest => false;

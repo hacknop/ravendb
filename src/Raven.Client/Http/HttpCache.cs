@@ -245,7 +245,7 @@ namespace Raven.Client.Http
                         Item = item
                     };
                     changeVector = item.ChangeVector;
-                    obj = item.Ptr != null ? new BlittableJsonReaderObject(item.Ptr, item.Size, context) : null;
+                    obj = item.Ptr != null ? new BlittableJsonReaderObject(item.Ptr, item.Size) : null;
                     if (Logger.IsInfoEnabled)
                         Logger.Info($"Url returned from the cache with etag: {changeVector}. {url}.");
                     return releaser;

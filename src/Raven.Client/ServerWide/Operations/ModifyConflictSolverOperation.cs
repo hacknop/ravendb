@@ -28,22 +28,25 @@ namespace Raven.Client.ServerWide.Operations
 
         public RavenCommand<ModifySolverResult> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new ModifyConflictSolverCommand(conventions, _database, this);
+            return new ModifyConflictSolverCommand(ctx, conventions, _database, this);
         }
 
         private class ModifyConflictSolverCommand : RavenCommand<ModifySolverResult>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly ModifyConflictSolverOperation _solver;
             private readonly DocumentConventions _conventions;
             private readonly string _databaseName;
     
             public ModifyConflictSolverCommand(
+                JsonOperationContext ctx,
                 DocumentConventions conventions,
                 string database,
                 ModifyConflictSolverOperation solver)
             {
                 _conventions = conventions ?? throw new ArgumentNullException(nameof(conventions));
                 _databaseName = database ?? throw new ArgumentNullException(nameof(database));
+                _ctx = ctx;
                 _solver = solver;
             }
 
@@ -74,7 +77,7 @@ namespace Raven.Client.ServerWide.Operations
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.ModifySolverResult(response);
+                Result = JsonDeserializationClient.ModifySolverResult(_ctx, response);
             }
 
             public override bool IsReadRequest => false;

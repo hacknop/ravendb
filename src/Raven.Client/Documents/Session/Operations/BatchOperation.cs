@@ -44,7 +44,7 @@ namespace Raven.Client.Documents.Session.Operations
 
             for (var i = 0; i < _sessionCommandsCount; i++)
             {
-                var batchResult = result.Results[i] as BlittableJsonReaderObject;
+                var batchResult = result.Results.GetValueTokenTupleByIndex(_session.Context, i).Value as BlittableJsonReaderObject;
                 if (batchResult == null)
                     throw new ArgumentNullException();
 
@@ -66,7 +66,7 @@ namespace Raven.Client.Documents.Session.Operations
                 documentInfo.Metadata.Modifications = null;
                 documentInfo.Metadata.Modifications = new DynamicJsonValue(documentInfo.Metadata);
 
-                foreach (var propertyName in batchResult.GetPropertyNames())
+                foreach (var propertyName in batchResult.GetPropertyNames(_session.Context))
                 {
                     if(propertyName == "Type")
                         continue;

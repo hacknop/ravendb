@@ -30,7 +30,7 @@ namespace Raven.Client.Documents.Operations
         private readonly Expression<Func<TEntity, bool>> _expression;
 
         public DeleteByIndexOperation(string indexName, Expression<Func<TEntity, bool>> expression, QueryOperationOptions options = null)
-            : base(DummyQuery, options)
+            : base( DummyQuery, options)
         {
             _indexName = indexName ?? throw new ArgumentNullException(nameof(indexName));
             _expression = expression ?? throw new ArgumentNullException(nameof(expression));
@@ -71,17 +71,19 @@ namespace Raven.Client.Documents.Operations
 
         public virtual RavenCommand<OperationIdResult> GetCommand(IDocumentStore store, DocumentConventions conventions, JsonOperationContext context, HttpCache cache)
         {
-            return new DeleteByIndexCommand(conventions, _queryToDelete, _options);
+            return new DeleteByIndexCommand(context, conventions, _queryToDelete, _options);
         }
 
         private class DeleteByIndexCommand : RavenCommand<OperationIdResult>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly DocumentConventions _conventions;
             private readonly IndexQuery _queryToDelete;
             private readonly QueryOperationOptions _options;
 
-            public DeleteByIndexCommand(DocumentConventions conventions, IndexQuery queryToDelete, QueryOperationOptions options = null)
+            public DeleteByIndexCommand(JsonOperationContext ctx, DocumentConventions conventions, IndexQuery queryToDelete, QueryOperationOptions options = null)
             {
+                _ctx = ctx;
                 _conventions = conventions ?? throw new ArgumentNullException(nameof(conventions));
                 _queryToDelete = queryToDelete ?? throw new ArgumentNullException(nameof(queryToDelete));
                 _options = options ?? new QueryOperationOptions();
@@ -129,7 +131,7 @@ namespace Raven.Client.Documents.Operations
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.OperationIdResult(response);
+                Result = JsonDeserializationClient.OperationIdResult(_ctx, response);
             }
 
             public override bool IsReadRequest => false;

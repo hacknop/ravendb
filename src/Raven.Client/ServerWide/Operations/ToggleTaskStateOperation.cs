@@ -25,23 +25,26 @@ namespace Raven.Client.ServerWide.Operations
 
         public RavenCommand GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new ToggleTaskStateCommand(_database, _taskId, _type, _disable);
+            return new ToggleTaskStateCommand(ctx, _database, _taskId, _type, _disable);
         }
 
         private class ToggleTaskStateCommand : RavenCommand
         {
             private readonly string _databaseName;
+            private readonly JsonOperationContext _ctx;
             private readonly long _taskId;
             private readonly OngoingTaskType _type;
             private readonly bool _disable;
 
             public ToggleTaskStateCommand(
+                JsonOperationContext ctx,
                 string database,
                 long taskId,
                 OngoingTaskType type,
                 bool disable)
             {
                 _databaseName = database ?? throw new ArgumentNullException(nameof(database));
+                _ctx = ctx;
                 _taskId = taskId;
                 _type = type;
                 _disable = disable;
@@ -62,7 +65,7 @@ namespace Raven.Client.ServerWide.Operations
             public override void SetResponse(BlittableJsonReaderObject response, bool fromCache)
             {
                 if (response != null)
-                    Result = JsonDeserializationClient.ModifyOngoingTaskResult(response);
+                    Result = JsonDeserializationClient.ModifyOngoingTaskResult(_ctx, response);
             }
 
             public override bool IsReadRequest => false;

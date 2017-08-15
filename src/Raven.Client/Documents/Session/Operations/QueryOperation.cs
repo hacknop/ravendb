@@ -58,7 +58,7 @@ namespace Raven.Client.Documents.Session.Operations
             _session.IncrementRequestCount();
             LogQuery();
 
-            return new QueryCommand(_session.Conventions, _indexQuery, _metadataOnly, _indexEntriesOnly);
+            return new QueryCommand(_session.Context, _session.Conventions, _indexQuery, _metadataOnly, _indexEntriesOnly);
         }
 
         public void SetResult(QueryResult queryResult)
@@ -101,7 +101,7 @@ namespace Raven.Client.Documents.Session.Operations
         public IList<T> Complete<T>()
         {
             var queryResult = _currentQueryResults.CreateSnapshot();
-            foreach (BlittableJsonReaderObject include in queryResult.Includes)
+            foreach (BlittableJsonReaderObject include in queryResult.Includes.GetItems(_session.Context))
             {
                 if (include == null)
                     continue;
@@ -119,14 +119,14 @@ namespace Raven.Client.Documents.Session.Operations
             else
             {
                 list = new List<T>();
-                foreach (BlittableJsonReaderObject document in queryResult.Results)
+                foreach (BlittableJsonReaderObject document in queryResult.Results.GetItems(_session.Context))
                 {
                     var metadata = document.GetMetadata();
 
                     string id;
                     metadata.TryGetId(out id);
 
-                    list.Add(Deserialize<T>(id, document, metadata, _projectionFields, DisableEntitiesTracking, _session));
+                    list.Add(Deserialize<T>(_session.Context, id, document, metadata, _projectionFields, DisableEntitiesTracking, _session));
                 }
             }
 
@@ -139,7 +139,7 @@ namespace Raven.Client.Documents.Session.Operations
             return _transformResults(_indexQuery, list.Cast<object>()).Cast<T>().ToList();
         }
 
-        internal static T Deserialize<T>(string id, BlittableJsonReaderObject document, BlittableJsonReaderObject metadata, string[] projectionFields, bool disableEntitiesTracking, InMemoryDocumentSessionOperations session)
+        internal static T Deserialize<T>(JsonOperationContext context, string id, BlittableJsonReaderObject document, BlittableJsonReaderObject metadata, string[] projectionFields, bool disableEntitiesTracking, InMemoryDocumentSessionOperations session)
         {
             if (projectionFields == null || projectionFields.Length == 0)
                 return session.TrackEntity<T>(id, document, metadata, disableEntitiesTracking);
@@ -165,7 +165,7 @@ namespace Raven.Client.Documents.Session.Operations
                     document = innerJson;
             }
 
-            var result = (T)session.Conventions.DeserializeEntityFromBlittable(typeof(T), document);
+            var result = (T)session.Conventions.DeserializeEntityFromBlittable(context, typeof(T), document);
 
             if (string.IsNullOrEmpty(id) == false)
             {
@@ -204,7 +204,7 @@ namespace Raven.Client.Documents.Session.Operations
             if (Logger.IsInfoEnabled)
             {
                 var isStale = result.IsStale ? "stale " : "";
-                Logger.Info($"Query returned {result.Results.Items.Count()}/{result.TotalResults} {isStale}results");
+                Logger.Info($"Query returned {result.Results.Length}/{result.TotalResults} {isStale}results");
             }
         }
 

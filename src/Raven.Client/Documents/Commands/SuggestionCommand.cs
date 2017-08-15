@@ -13,11 +13,13 @@ namespace Raven.Client.Documents.Commands
 {
     public class SuggestionCommand : RavenCommand<SuggestionQueryResult>
     {
+        private readonly JsonOperationContext _ctx;
         private readonly DocumentConventions _conventions;
         private readonly SuggestionQuery _query;
 
-        public SuggestionCommand(DocumentConventions conventions, SuggestionQuery query)
+        public SuggestionCommand(JsonOperationContext ctx, DocumentConventions conventions, SuggestionQuery query)
         {
+            _ctx = ctx;
             _conventions = conventions ?? throw new ArgumentNullException(nameof(conventions));
             _query = query ?? throw new ArgumentNullException(nameof(query));
         }
@@ -55,7 +57,7 @@ namespace Raven.Client.Documents.Commands
                 return;
             }
 
-            Result = JsonDeserializationClient.SuggestQueryResult(response);
+            Result = JsonDeserializationClient.SuggestQueryResult(_ctx, response);
         }
 
         public override bool IsReadRequest => true;

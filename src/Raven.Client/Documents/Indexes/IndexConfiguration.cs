@@ -44,12 +44,12 @@ namespace Raven.Client.Documents.Indexes
             return Count;
         }
 
-        public void FillFromBlittableJson(BlittableJsonReaderObject json)
+        public void FillFromBlittableJson(JsonOperationContext ctx, BlittableJsonReaderObject json)
         {
             if (json == null)
                 return;
 
-            foreach (var propertyName in json.GetPropertyNames())
+            foreach (var propertyName in json.GetPropertyNames(ctx))
                 this[propertyName] = json[propertyName].ToString();
         }
     }

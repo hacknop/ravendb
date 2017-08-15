@@ -22,16 +22,18 @@ namespace Raven.Client.ServerWide.Operations.ETL
 
         public RavenCommand<AddEtlOperationResult> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new AddEtlCommand(_configuration, _databaseName);
+            return new AddEtlCommand(ctx, _configuration, _databaseName);
         }
 
         public class AddEtlCommand : RavenCommand<AddEtlOperationResult>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly EtlConfiguration<T> _configuration;
             private readonly string _databaseName;
 
-            public AddEtlCommand(EtlConfiguration<T> configuration, string databaseName)
+            public AddEtlCommand(JsonOperationContext ctx, EtlConfiguration<T> configuration, string databaseName)
             {
+                _ctx = ctx;
                 _configuration = configuration;
                 _databaseName = databaseName;
             }
@@ -60,7 +62,7 @@ namespace Raven.Client.ServerWide.Operations.ETL
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.AddEtlOperationResult(response);
+                Result = JsonDeserializationClient.AddEtlOperationResult(_ctx, response);
             }
         }
     }

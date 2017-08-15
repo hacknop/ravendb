@@ -8,11 +8,12 @@ namespace Raven.Client.Documents.Commands
 {
     public class GetStatisticsCommand : RavenCommand<DatabaseStatistics>
     {
+        private readonly JsonOperationContext _ctx;
         public readonly string DebugTag;
 
-        public GetStatisticsCommand()
+        public GetStatisticsCommand(JsonOperationContext ctx)
         {
-            
+            _ctx = ctx;
         }
         
         public GetStatisticsCommand(string debugTag)
@@ -33,7 +34,7 @@ namespace Raven.Client.Documents.Commands
 
         public override void SetResponse(BlittableJsonReaderObject response, bool fromCache)
         {
-            Result = JsonDeserializationClient.GetStatisticsResult(response);
+            Result = JsonDeserializationClient.GetStatisticsResult(_ctx, response);
         }
 
         public override bool IsReadRequest => true;

@@ -45,9 +45,14 @@ namespace Raven.Client.Http
 
                 using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                 {
-                    using (var blittableJsonReaderObject = context.Read(stream, "raven-topology"))
+                    var blittableJsonReaderObject = context.Read(stream, "raven-topology");
+                    try
                     {
-                        return JsonDeserializationClient.Topology(blittableJsonReaderObject);
+                        return JsonDeserializationClient.Topology(context, blittableJsonReaderObject);
+                    }
+                    finally
+                    {
+                        blittableJsonReaderObject.Dispose(context);
                     }
                 }
             }

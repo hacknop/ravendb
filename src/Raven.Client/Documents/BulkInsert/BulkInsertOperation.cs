@@ -188,11 +188,12 @@ namespace Raven.Client.Documents.BulkInsert
 
             JsonOperationContext tempContext;
             using (_requestExecutor.ContextPool.AllocateOperationContext(out tempContext))
-            using (var doc = EntityToBlittable.ConvertEntityToBlittable(entity, _requestExecutor.Conventions, tempContext, new DocumentInfo
             {
-                Collection = _requestExecutor.Conventions.GetCollectionName(entity)
-            }))
-            {
+                var doc = EntityToBlittable.ConvertEntityToBlittable(entity, _requestExecutor.Conventions, tempContext, new DocumentInfo
+                {
+                    Collection = _requestExecutor.Conventions.GetCollectionName(entity)
+                });
+
                 if (_first == false)
                 {
                     _jsonWriter.WriteComma();
@@ -237,7 +238,7 @@ namespace Raven.Client.Documents.BulkInsert
 
         private async Task<BulkInsertAbortedException> GetExceptionFromOperation()
         {
-            var stateRequest = new GetOperationStateCommand(_requestExecutor.Conventions, _operationId);
+            var stateRequest = new GetOperationStateCommand(_context, _requestExecutor.Conventions, _operationId);
             await _requestExecutor.ExecuteAsync(stateRequest, _context, _token).ConfigureAwait(false);
             var error = stateRequest.Result.Result as OperationExceptionResult;
 

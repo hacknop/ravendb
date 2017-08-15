@@ -88,7 +88,7 @@ namespace Raven.Client.Documents.Session.Operations
 
             if (result.Includes != null)
             {
-                foreach (BlittableJsonReaderObject include in result.Includes)
+                foreach (BlittableJsonReaderObject include in result.Includes.GetItems(_session.Context))
                 {
                     if (include == null)
                         continue;

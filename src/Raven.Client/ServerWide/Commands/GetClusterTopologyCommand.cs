@@ -7,6 +7,13 @@ namespace Raven.Client.ServerWide.Commands
 {
     public class GetClusterTopologyCommand : RavenCommand<ClusterTopologyResponse>
     {
+        private readonly JsonOperationContext _ctx;
+
+        public GetClusterTopologyCommand(JsonOperationContext ctx)
+        {
+            _ctx = ctx;
+        }
+
         public override HttpRequestMessage CreateRequest(JsonOperationContext ctx, ServerNode node, out string url)
         {
             url = $"{node.Url}/cluster/topology";
@@ -22,7 +29,7 @@ namespace Raven.Client.ServerWide.Commands
             if (response == null)
                 return;
 
-            Result = JsonDeserializationClient.ClusterTopology(response);
+            Result = JsonDeserializationClient.ClusterTopology(_ctx, response);
         }
 
         public override bool IsReadRequest => true;

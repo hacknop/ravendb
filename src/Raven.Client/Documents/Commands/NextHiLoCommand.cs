@@ -10,14 +10,16 @@ namespace Raven.Client.Documents.Commands
     public class NextHiLoCommand : RavenCommand<HiLoResult>
     {
         private readonly string _tag;
+        private readonly JsonOperationContext _ctx;
         private readonly long _lastBatchSize;
         private readonly DateTime _lastRangeAt;
         private readonly string _identityPartsSeparator;
         private readonly long _lastRangeMax;
 
-        public NextHiLoCommand(string tag, long lastBatchSize, DateTime lastRangeAt, string identityPartsSeparator, long lastRangeMax)
+        public NextHiLoCommand(JsonOperationContext ctx, string tag, long lastBatchSize, DateTime lastRangeAt, string identityPartsSeparator, long lastRangeMax)
         {
             _tag = tag ?? throw new ArgumentNullException(nameof(tag));
+            _ctx = ctx;
             _lastBatchSize = lastBatchSize;
             _lastRangeAt = lastRangeAt;
             _identityPartsSeparator = identityPartsSeparator ?? throw new ArgumentNullException(nameof(identityPartsSeparator));
@@ -39,7 +41,7 @@ namespace Raven.Client.Documents.Commands
 
         public override void SetResponse(BlittableJsonReaderObject response, bool fromCache)
         {
-            Result = JsonDeserializationClient.HiLoResult(response);
+            Result = JsonDeserializationClient.HiLoResult(_ctx, response);
         }
 
         public override bool IsReadRequest => true;

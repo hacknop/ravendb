@@ -15,6 +15,7 @@ namespace Raven.Client.Documents.Commands.Batches
     {
         private readonly BlittableJsonReaderObject[] _commands;
         private readonly HashSet<Stream> _attachmentStreams;
+        private readonly JsonOperationContext _context;
         private readonly BatchOptions _options;
 
         public BatchCommand(DocumentConventions conventions, JsonOperationContext context, List<ICommandData> commands, BatchOptions options = null)
@@ -44,6 +45,7 @@ namespace Raven.Client.Documents.Commands.Batches
                 }
             }
 
+            _context = context;
             _options = options;
 
             Timeout = options?.RequestTimeout;
@@ -92,7 +94,7 @@ namespace Raven.Client.Documents.Commands.Batches
             if (response == null)
                 throw new InvalidOperationException("Got null response from the server after doing a batch, something is very wrong. Probably a garbled response.");
 
-            Result = JsonDeserializationClient.BlittableArrayResult(response);
+            Result = JsonDeserializationClient.BlittableArrayResult(_context, response);
         }
 
         private void AppendOptions(StringBuilder sb)
@@ -137,7 +139,7 @@ namespace Raven.Client.Documents.Commands.Batches
         public void Dispose()
         {
             foreach (var command in _commands)
-                command?.Dispose();
+                command?.Dispose(_context);
         }
     }
 }

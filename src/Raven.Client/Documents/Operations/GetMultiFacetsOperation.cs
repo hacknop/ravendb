@@ -32,13 +32,15 @@ namespace Raven.Client.Documents.Operations
 
         private class GetMultiFacetsCommand : RavenCommand<FacetedQueryResult[]>
         {
+            private readonly JsonOperationContext _context;
             private readonly MultiGetCommand _command;
 
             public GetMultiFacetsCommand(DocumentConventions conventions, JsonOperationContext context, HttpCache cache, FacetQuery[] queries)
             {
+                _context = context;
                 var commands = new List<GetRequest>();
                 foreach (var q in queries)
-                    commands.Add(new LazyFacetsOperation(conventions, q).CreateRequest(context));
+                    commands.Add(new LazyFacetsOperation(context, conventions, q).CreateRequest(context));
 
                 _command = new MultiGetCommand(cache, commands);
                 ResponseType = RavenCommandResponseType.Raw;
@@ -59,7 +61,7 @@ namespace Raven.Client.Documents.Operations
                 for (var i = 0; i < _command.Result.Count; i++)
                 {
                     var result = _command.Result[i];
-                    Result[i] = JsonDeserializationClient.FacetedQueryResult((BlittableJsonReaderObject)result.Result);
+                    Result[i] = JsonDeserializationClient.FacetedQueryResult(_context, (BlittableJsonReaderObject)result.Result);
                 }
             }
         }

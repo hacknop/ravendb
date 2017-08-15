@@ -51,16 +51,16 @@ namespace Raven.Client.Documents.Session
 
 
 
-        public static void Include(BlittableJsonReaderObject document, string include, Func<string, bool> loadId)
+        public static void Include(JsonOperationContext ctx, BlittableJsonReaderObject document, string include, Func<string, bool> loadId)
         {
             if (string.IsNullOrEmpty(include) || document == null)
                 return;
             bool isPrefix;
             var path = GetIncludePath(include, out isPrefix);
 
-            foreach (var token in document.SelectTokenWithRavenSyntaxReturningFlatStructure(path.Path))
+            foreach (var token in document.SelectTokenWithRavenSyntaxReturningFlatStructure(ctx, path.Path))
             {
-                ExecuteInternal(token.Item1, path.Addition, (value, addition) =>
+                ExecuteInternal(ctx, token.Item1, path.Addition, (value, addition) =>
                 {
                     value = (addition != null ?
                     (isPrefix ? addition + value : string.Format(addition, value)) : value);
@@ -69,7 +69,7 @@ namespace Raven.Client.Documents.Session
             }
         }
 
-        private static void ExecuteInternal(object token, string addition, Func<string, string, bool> loadId)
+        private static void ExecuteInternal(JsonOperationContext ctx, object token, string addition, Func<string, string, bool> loadId)
         {
             if (token == null)
                 return; // nothing to do
@@ -81,7 +81,7 @@ namespace Raven.Client.Documents.Session
 
                 for (var i = 0; i < blitArray.Length; i++)
                 {
-                    ExecuteInternal(blitArray[i], addition, loadId);
+                    ExecuteInternal(ctx, blitArray.GetValueTokenTupleByIndex(ctx, i).Value, addition, loadId);
                 }
             }
             else if (token is string)

@@ -12,6 +12,8 @@ namespace Raven.Client.Documents.Commands
 {
     public class ExplainQueryCommand : RavenCommand<ExplainQueryCommand.ExplainQueryResult[]>
     {
+        private readonly JsonOperationContext _ctx;
+
         public class ExplainQueryResult
         {
             public string Index { get; set; }
@@ -21,8 +23,9 @@ namespace Raven.Client.Documents.Commands
         private readonly DocumentConventions _conventions;
         private readonly IndexQuery _indexQuery;
 
-        public ExplainQueryCommand(DocumentConventions conventions, IndexQuery indexQuery)
+        public ExplainQueryCommand(JsonOperationContext ctx, DocumentConventions conventions, IndexQuery indexQuery)
         {
+            _ctx = ctx;
             _conventions = conventions ?? throw new ArgumentNullException(nameof(conventions));
             _indexQuery = indexQuery ?? throw new ArgumentNullException(nameof(indexQuery));
         }
@@ -68,8 +71,8 @@ namespace Raven.Client.Documents.Commands
             var results = new ExplainQueryResult[array.Length];
             for (var i = 0; i < array.Length; i++)
             {
-                var result = (BlittableJsonReaderObject)array[i];
-                results[i] = (ExplainQueryResult)_conventions.DeserializeEntityFromBlittable(typeof(ExplainQueryResult), result);
+                var result = (BlittableJsonReaderObject)array.GetValueTokenTupleByIndex(_ctx, i).Value;
+                results[i] = (ExplainQueryResult)_conventions.DeserializeEntityFromBlittable(_ctx, typeof(ExplainQueryResult), result);
             }
 
             Result = results;

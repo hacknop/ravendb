@@ -29,7 +29,7 @@ namespace Raven.Client.Documents.Session.Operations
         {
             _session.IncrementRequestCount();
 
-            return new MoreLikeThisCommand(_session.Conventions, _query);
+            return new MoreLikeThisCommand(_session.Context, _session.Conventions, _query);
         }
 
         public void SetResult(MoreLikeThisQueryResult result)
@@ -39,7 +39,7 @@ namespace Raven.Client.Documents.Session.Operations
 
         public List<T> Complete<T>()
         {
-            foreach (BlittableJsonReaderObject include in _result.Includes)
+            foreach (BlittableJsonReaderObject include in _result.Includes.GetItems(_session.Context))
             {
                 if (include == null)
                     continue;
@@ -57,14 +57,14 @@ namespace Raven.Client.Documents.Session.Operations
             else
             {
                 list = new List<T>();
-                foreach (BlittableJsonReaderObject document in _result.Results)
+                foreach (BlittableJsonReaderObject document in _result.Results.GetItems(_session.Context))
                 {
                     var metadata = document.GetMetadata();
 
                     string id;
                     metadata.TryGetId(out id);
 
-                    list.Add(QueryOperation.Deserialize<T>(id, document, metadata, projectionFields: null, disableEntitiesTracking: false, session: _session));
+                    list.Add(QueryOperation.Deserialize<T>(_session.Context, id, document, metadata, projectionFields: null, disableEntitiesTracking: false, session: _session));
                 }
             }
 

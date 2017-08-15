@@ -66,7 +66,7 @@ namespace Sparrow.Json
                     WriteComma();
                 }
 
-                obj.GetPropertyByIndex(props[i], ref prop);
+                obj.GetPropertyByIndex(_context, props[i], ref prop);
                 WritePropertyName(prop.Name);
 
                 WriteValue(prop.Token & BlittableJsonReaderBase.TypesMask, prop.Value, originalPropertyOrder: true);
@@ -90,7 +90,7 @@ namespace Sparrow.Json
                 {
                     WriteComma();
                 }
-                obj.GetPropertyByIndex(i, ref prop);
+                obj.GetPropertyByIndex(_context, i, ref prop);
                 WritePropertyName(prop.Name);
 
                 WriteValue(prop.Token & BlittableJsonReaderBase.TypesMask, prop.Value, originalPropertyOrder: false);
@@ -106,7 +106,7 @@ namespace Sparrow.Json
             var length = blittableArray.Length;
             for (var i = 0; i < length; i++)
             {
-                var propertyValueAndType = blittableArray.GetValueTokenTupleByIndex(i);
+                var propertyValueAndType = blittableArray.GetValueTokenTupleByIndex(_context, i);
 
                 if (i != 0)
                 {

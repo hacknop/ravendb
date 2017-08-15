@@ -21,7 +21,7 @@ namespace Raven.Client.Documents.Conventions
             _conventions = conventions;
         }
 
-        public object EntityFromJsonStream(Type type, BlittableJsonReaderObject jsonObject)
+        public object EntityFromJsonStream(JsonOperationContext ctx, Type type, BlittableJsonReaderObject jsonObject)
         {
             if (_reader == null)
                 _reader = new BlittableJsonReader();
@@ -34,7 +34,7 @@ namespace Raven.Client.Documents.Conventions
                 _serializer = _conventions.CreateSerializer();
             }
 
-            _reader.Init(jsonObject);
+            _reader.Init(ctx, jsonObject);
 
             return _serializer.Deserialize(_reader, type);
         }

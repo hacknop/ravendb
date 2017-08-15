@@ -21,11 +21,11 @@ namespace Tryouts
             {
                 Console.Clear();
                 Console.WriteLine(i);
-                using (var test = new FastTests.Client.Subscriptions.RavenDB_7384())
+                using (var test = new SlowTests.Server.Documents.ETL.SQL.SqlEtlTests())
                 {
                     try
                     {
-                        test.UpdatingSubscriptionScriptShouldNotChangeVectorButShouldDropConnection().Wait();
+                        test.ReplicateMultipleBatches().Wait();
                     }
                     catch (Exception e)
                     {

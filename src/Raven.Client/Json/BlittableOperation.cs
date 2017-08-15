@@ -24,12 +24,12 @@ namespace Raven.Client.Json
             Id = Context.Value.GetLazyString(Constants.Documents.Metadata.Id);
         }
 
-        public static bool EntityChanged(BlittableJsonReaderObject newObj, DocumentInfo documentInfo, IDictionary<string, DocumentsChanges[]> changes)
+        public static bool EntityChanged(JsonOperationContext ctx, BlittableJsonReaderObject newObj, DocumentInfo documentInfo, IDictionary<string, DocumentsChanges[]> changes)
         {
             var docChanges = changes != null ? new List<DocumentsChanges>() : null;
 
             if (documentInfo.IsNewDocument == false && documentInfo.Document != null)
-                return CompareBlittable(documentInfo.Id, documentInfo.Document, newObj, changes, docChanges);
+                return CompareBlittable(ctx, documentInfo.Id, documentInfo.Document, newObj, changes, docChanges);
 
             if (changes == null)
                 return true;
@@ -39,15 +39,17 @@ namespace Raven.Client.Json
             return true;
         }
 
-        private static bool CompareBlittable(string id, BlittableJsonReaderObject originalBlittable,
+        private static bool CompareBlittable(
+            JsonOperationContext ctx, 
+            string id, BlittableJsonReaderObject originalBlittable,
             BlittableJsonReaderObject newBlittable, IDictionary<string, DocumentsChanges[]> changes,
             List<DocumentsChanges> docChanges)
         {
-            BlittableJsonReaderObject.AssertNoModifications(originalBlittable, id, assertChildren: false);
-            BlittableJsonReaderObject.AssertNoModifications(newBlittable, id, assertChildren: false);
+            BlittableJsonReaderObject.AssertNoModifications(ctx, originalBlittable, id, assertChildren: false);
+            BlittableJsonReaderObject.AssertNoModifications(ctx, newBlittable, id, assertChildren: false);
 
-            var newBlittableProps = newBlittable.GetPropertyNames();
-            var oldBlittableProps = originalBlittable.GetPropertyNames();
+            var newBlittableProps = newBlittable.GetPropertyNames(ctx);
+            var oldBlittableProps = originalBlittable.GetPropertyNames(ctx);
             var newFields = newBlittableProps.Except(oldBlittableProps);
             var removedFields = oldBlittableProps.Except(newBlittableProps);
 
@@ -65,7 +67,7 @@ namespace Raven.Client.Json
 
             foreach (var propId in propertiesIds)
             {
-                newBlittable.GetPropertyByIndex(propId, ref newProp);
+                newBlittable.GetPropertyByIndex(ctx, propId, ref newProp);
 
                 if (newProp.Name.Equals(LastModified) ||
                     newProp.Name.Equals(Collection) ||
@@ -82,7 +84,7 @@ namespace Raven.Client.Json
                 }
 
                 var oldPropId = originalBlittable.GetPropertyIndex(newProp.Name);
-                originalBlittable.GetPropertyByIndex(oldPropId, ref oldProp);
+                originalBlittable.GetPropertyByIndex(ctx, oldPropId, ref oldProp);
 
                 switch ((newProp.Token & BlittableJsonReaderBase.TypesMask))
                 {
@@ -108,7 +110,7 @@ namespace Raven.Client.Json
                         if ((newArray == null) || (oldArray == null))
                             throw new InvalidDataException("Invalid blittable");
 
-                        var changed = CompareBlittableArray(newArray, oldArray);
+                        var changed = CompareBlittableArray(ctx, newArray, oldArray);
                         if (!(changed))
                             break;
 
@@ -119,7 +121,7 @@ namespace Raven.Client.Json
                         break;
                     case BlittableJsonToken.StartObject:
                         {
-                            changed = CompareBlittable(id, oldProp.Value as BlittableJsonReaderObject,
+                            changed = CompareBlittable(ctx, id, oldProp.Value as BlittableJsonReaderObject,
                                 newProp.Value as BlittableJsonReaderObject, changes, docChanges);
                             if ((changes == null) && (changed))
                                 return true;
@@ -136,7 +138,7 @@ namespace Raven.Client.Json
             return true;
         }
 
-        private static bool CompareBlittableArray(BlittableJsonReaderArray newArray, BlittableJsonReaderArray oldArray)
+        private static bool CompareBlittableArray(JsonOperationContext ctx, BlittableJsonReaderArray newArray, BlittableJsonReaderArray oldArray)
         {
             if (newArray.Length != oldArray.Length)
                 return true;
@@ -146,18 +148,18 @@ namespace Raven.Client.Json
             switch (type)
             {
                 case BlittableJsonToken.StartObject:
-                    foreach (var item in newArray.Items)
+                    foreach (var item in newArray.GetItems(ctx))
                     {
-                        return oldArray.Items.Select(oldItem =>
-                        CompareBlittable("", (BlittableJsonReaderObject)item, (BlittableJsonReaderObject)oldItem, null, null))
+                        return oldArray.GetItems(ctx).Select(oldItem =>
+                        CompareBlittable(ctx, "", (BlittableJsonReaderObject)item, (BlittableJsonReaderObject)oldItem, null, null))
                         .All(change => change);
                     }
                     break;
                 case BlittableJsonToken.StartArray:
-                    foreach (var item in newArray.Items)
+                    foreach (var item in newArray.GetItems(ctx))
                     {
-                        return oldArray.Items.Select(oldItem =>
-                        CompareBlittableArray((BlittableJsonReaderArray)item, (BlittableJsonReaderArray)oldItem))
+                        return oldArray.GetItems(ctx).Select(oldItem =>
+                        CompareBlittableArray(ctx, (BlittableJsonReaderArray)item, (BlittableJsonReaderArray)oldItem))
                         .All(change => change);
                     }
                     break;
@@ -166,7 +168,7 @@ namespace Raven.Client.Json
                 case BlittableJsonToken.String:
                 case BlittableJsonToken.CompressedString:
                 case BlittableJsonToken.Boolean:
-                    return (!(!(newArray.Except(oldArray).Any()) && newArray.Length == oldArray.Length));
+                    return (!(!(newArray.GetItems(ctx).Except(oldArray.GetItems(ctx)).Any()) && newArray.Length == oldArray.Length));
                 default:
                     throw new ArgumentOutOfRangeException();
             }

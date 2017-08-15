@@ -7,13 +7,15 @@ namespace Raven.Client.Json
 {
     internal class BlittablePath
     {
+        private readonly JsonOperationContext _ctx;
         private readonly string _expression;
         public List<object> Parts { get; }
 
         private int _currentIndex;
 
-        public BlittablePath(string expression)
+        public BlittablePath(JsonOperationContext ctx, string expression)
         {
+            _ctx = ctx;
             _expression = expression;
             Parts = new List<object>();
 
@@ -173,7 +175,7 @@ namespace Raven.Client.Json
                             return null;
                         }
 
-                        current = a[index];
+                        current = a.GetValueTokenTupleByIndex(_ctx, index).Value;
                     }
                     else
                     {
@@ -189,7 +191,7 @@ namespace Raven.Client.Json
                         var trueIndex = b.GetPropertiesByInsertionOrder()[index];
                         var prop = new BlittableJsonReaderObject.PropertyDetails();
 
-                        b.GetPropertyByIndex(trueIndex, ref prop);
+                        b.GetPropertyByIndex(_ctx, trueIndex, ref prop);
 
                         current = prop.Value;
                     }

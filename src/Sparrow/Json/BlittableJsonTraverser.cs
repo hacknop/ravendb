@@ -30,17 +30,17 @@ namespace Sparrow.Json
                 _separators = nonDefaultSeparators;
         }
 
-        public object Read(BlittableJsonReaderObject docReader, StringSegment path)
+        public object Read(JsonOperationContext ctx, BlittableJsonReaderObject docReader, StringSegment path)
         {
             object result;
             StringSegment leftPath;
-            if (TryRead(docReader, path, out result, out leftPath) == false)
+            if (TryRead(ctx, docReader, path, out result, out leftPath) == false)
                 throw new InvalidOperationException($"Invalid path: {path}.");
 
             return result;
         }
 
-        public bool TryRead(BlittableJsonReaderObject docReader, StringSegment path, out object result, out StringSegment leftPath)
+        public bool TryRead(JsonOperationContext ctx, BlittableJsonReaderObject docReader, StringSegment path, out object result, out StringSegment leftPath)
         {
             var indexOfFirstSeparator = path.IndexOfAny(_separators, 0);
             object reader;
@@ -69,7 +69,7 @@ namespace Sparrow.Json
                     var propertyInnerObject = reader as BlittableJsonReaderObject;
                     if (propertyInnerObject != null)
                     {
-                        if (TryRead(propertyInnerObject, pathSegment, out result, out leftPath))
+                        if (TryRead(ctx, propertyInnerObject, pathSegment, out result, out leftPath))
                             return true;
 
                         if (result == null)
@@ -87,7 +87,7 @@ namespace Sparrow.Json
                     var collectionInnerArray = reader as BlittableJsonReaderArray;
                     if (collectionInnerArray != null)
                     {
-                        result = ReadArray(collectionInnerArray, leftPath);
+                        result = ReadArray(ctx, collectionInnerArray, leftPath);
                         return true;
                     }
                     result = reader;
@@ -97,18 +97,18 @@ namespace Sparrow.Json
             }
         }
 
-        private IEnumerable<object> ReadArray(BlittableJsonReaderArray array, StringSegment pathSegment)
+        private IEnumerable<object> ReadArray(JsonOperationContext ctx,BlittableJsonReaderArray array, StringSegment pathSegment)
         {
             // ReSharper disable once ForCanBeConvertedToForeach
             for (int i = 0; i < array.Length; i++)
             {
-                var item = array[i];
+                var item = array.GetValueTokenTupleByIndex(ctx, i).Value;
                 var arrayObject = item as BlittableJsonReaderObject;
                 if (arrayObject != null)
                 {
                     object result;
                     StringSegment leftPath;
-                    if (TryRead(arrayObject, pathSegment, out result, out leftPath))
+                    if (TryRead(ctx, arrayObject, pathSegment, out result, out leftPath))
                     {
                         var enumerable = result as IEnumerable;
 
@@ -146,7 +146,7 @@ namespace Sparrow.Json
                                 throw new NotSupportedException($"Unhandled separator character: {pathSegment[indexOfFirstSeparatorInSubIndex]}");
                         }
 
-                        foreach (var nestedItem in ReadArray(arrayReader, subSegment))
+                        foreach (var nestedItem in ReadArray(ctx, arrayReader, subSegment))
                         {
                             yield return nestedItem;
                         }

@@ -23,17 +23,19 @@ namespace Raven.Client.ServerWide.Operations
 
         public RavenCommand<ModifyOngoingTaskResult> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new UpdateExternalReplication(_database, _newWatcher);
+            return new UpdateExternalReplication(ctx, _database, _newWatcher);
         }
 
         private class UpdateExternalReplication : RavenCommand<ModifyOngoingTaskResult>
         {
             private readonly string _databaseName;
+            private readonly JsonOperationContext _ctx;
             private readonly ExternalReplication _newWatcher;
 
-            public UpdateExternalReplication(string database, ExternalReplication newWatcher)
+            public UpdateExternalReplication(JsonOperationContext ctx, string database, ExternalReplication newWatcher)
             {
                 _databaseName = database ?? throw new ArgumentNullException(nameof(database));
+                _ctx = ctx;
                 _newWatcher = newWatcher;
             }
 
@@ -63,7 +65,7 @@ namespace Raven.Client.ServerWide.Operations
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.ModifyOngoingTaskResult(response);
+                Result = JsonDeserializationClient.ModifyOngoingTaskResult(_ctx, response);
             }
 
             public override bool IsReadRequest => false;

@@ -9,12 +9,6 @@ namespace Sparrow.Json
         protected byte* _mem;
         protected byte* _propNames;
         protected int _propNamesDataOffsetSize;
-        protected internal JsonOperationContext _context;
-
-        protected BlittableJsonReaderBase(JsonOperationContext context)
-        {
-            _context = context;
-        }
 
         public bool NoCache { get; set; }
 
@@ -141,30 +135,30 @@ namespace Sparrow.Json
         {
             byte offset;
             var size = ReadVariableSizeInt(pos, out offset);
-            return new BlittableJsonReaderObject(_mem + pos + offset, size, _context)
+            return new BlittableJsonReaderObject(_mem + pos + offset, size)
             {
                 NoCache = NoCache
             };
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public LazyStringValue ReadStringLazily(int pos)
+        public LazyStringValue ReadStringLazily(JsonOperationContext ctx, int pos)
         {
             byte offset;
             var size = ReadVariableSizeInt(pos, out offset);
 
-            return _context.AllocateStringValue(null, _mem + pos + offset, size);
+            return ctx.AllocateStringValue(null, _mem + pos + offset, size);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public LazyCompressedStringValue ReadCompressStringLazily(int pos)
+        public LazyCompressedStringValue ReadCompressStringLazily(JsonOperationContext ctx, int pos)
         {
             byte offset;
             var uncompressedSize = ReadVariableSizeInt(pos, out offset);
             pos += offset;
             var compressedSize = ReadVariableSizeInt(pos, out offset);
             pos += offset;
-            return new LazyCompressedStringValue(null, _mem + pos, uncompressedSize, compressedSize, _context);
+            return new LazyCompressedStringValue(null, _mem + pos, uncompressedSize, compressedSize, ctx);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

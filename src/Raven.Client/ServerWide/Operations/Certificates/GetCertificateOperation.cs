@@ -18,15 +18,17 @@ namespace Raven.Client.ServerWide.Operations.Certificates
 
         public RavenCommand<CertificateDefinition> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetCertificateCommand(_name);
+            return new GetCertificateCommand(context, _name);
         }
 
         private class GetCertificateCommand : RavenCommand<CertificateDefinition>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly string _name;
 
-            public GetCertificateCommand(string name)
+            public GetCertificateCommand(JsonOperationContext ctx,string name)
             {
+                _ctx = ctx;
                 _name = name ?? throw new ArgumentNullException(nameof(name));
             }
 
@@ -49,7 +51,7 @@ namespace Raven.Client.ServerWide.Operations.Certificates
                 if (response == null)
                     return;
 
-                var results = JsonDeserializationClient.GetCertificatesResponse(response).Results;
+                var results = JsonDeserializationClient.GetCertificatesResponse(_ctx, response).Results;
 
                 if (results.Length != 1)
                     ThrowInvalidResponse();

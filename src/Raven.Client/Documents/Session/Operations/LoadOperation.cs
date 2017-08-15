@@ -109,7 +109,7 @@ namespace Raven.Client.Documents.Session.Operations
 
             if (result.Includes != null)
             {
-                foreach (BlittableJsonReaderObject include in result.Includes)
+                foreach (BlittableJsonReaderObject include in result.Includes.GetItems(_session.Context))
                 {
                     if (include == null)
                         continue;
@@ -119,7 +119,7 @@ namespace Raven.Client.Documents.Session.Operations
                 }
             }
 
-            foreach (BlittableJsonReaderObject document in result.Results)
+            foreach (BlittableJsonReaderObject document in result.Results.GetItems(_session.Context))
             {
                 if (document == null)
                     continue;

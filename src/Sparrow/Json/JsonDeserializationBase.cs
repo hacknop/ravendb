@@ -11,7 +11,7 @@ namespace Sparrow.Json
         private static readonly Type[] EmptyTypes = new Type[0];
         private static readonly Dictionary<Type, object> DeserializedTypes = new Dictionary<Type, object>();
 
-        protected internal static Func<BlittableJsonReaderObject, T> GenerateJsonDeserializationRoutine<T>()
+        protected internal static Func<JsonOperationContext ,BlittableJsonReaderObject, T> GenerateJsonDeserializationRoutine<T>()
         {
             try
             {
@@ -35,19 +35,20 @@ namespace Sparrow.Json
                 if (type.GetInterfaces().Contains(typeof(IFillFromBlittableJson)))
                 {
                     var obj = Expression.Parameter(type, "obj");
+                    var ctx = Expression.Parameter(typeof(JsonOperationContext), "ctx");
                     var methodToCall = typeof(IFillFromBlittableJson).GetMethod(nameof(IFillFromBlittableJson.FillFromBlittableJson), BindingFlags.Public | BindingFlags.Instance);
 
                     var returnTarget = Expression.Label(type);
 
                     var block = Expression.Block(
-                        new[] { obj },
+                        new[] { ctx, obj },
                         Expression.Assign(obj, Expression.MemberInit(instance)),
                         Expression.Call(obj, methodToCall, json),
                         Expression.Return(returnTarget, obj, type),
                         Expression.Label(returnTarget, Expression.Default(type))
                     );
 
-                    var l = Expression.Lambda<Func<BlittableJsonReaderObject, T>>(block, json);
+                    var l = Expression.Lambda<Func<JsonOperationContext, BlittableJsonReaderObject, T>>(block, json);
                     return l.Compile();
                 }
 
@@ -71,12 +72,12 @@ namespace Sparrow.Json
                     propInit.Add(Expression.Bind(propertyInfo, GetValue(propertyInfo.Name, propertyInfo.PropertyType, json, vars)));
                 }
 
-                var lambda = Expression.Lambda<Func<BlittableJsonReaderObject, T>>(Expression.Block(vars.Values, Expression.MemberInit(instance, propInit)), json);
+                var lambda = Expression.Lambda<Func<JsonOperationContext, BlittableJsonReaderObject, T>>(Expression.Block(vars.Values, Expression.MemberInit(instance, propInit)), json);
                 return lambda.Compile();
             }
             catch (Exception e)
             {
-                return o => throw new InvalidOperationException($"Could not build json parser for {typeof(T).FullName}", e);
+                return (ctx, o) => throw new InvalidOperationException($"Could not build json parser for {typeof(T).FullName}", e);
             }
         }
 
@@ -240,7 +241,7 @@ namespace Sparrow.Json
             return value;
         }
 
-        private static Dictionary<string, T> ToDictionaryOfPrimitive<T>(BlittableJsonReaderObject json, string name)
+        private static Dictionary<string, T> ToDictionaryOfPrimitive<T>(JsonOperationContext ctx, BlittableJsonReaderObject json, string name)
             where T : struct
         {
             var dic = new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
@@ -249,7 +250,7 @@ namespace Sparrow.Json
             if (json.TryGet(name, out obj) == false || obj == null)
                 return dic;
 
-            foreach (var propertyName in obj.GetPropertyNames())
+            foreach (var propertyName in obj.GetPropertyNames(ctx))
             {
                 object val;
                 if (obj.TryGetMember(propertyName, out val))
@@ -260,7 +261,7 @@ namespace Sparrow.Json
             return dic;
         }
 
-        private static Dictionary<TK, TV> ToDictionary<TK, TV>(BlittableJsonReaderObject json, string name, Func<BlittableJsonReaderObject, TV> converter)
+        private static Dictionary<TK, TV> ToDictionary<TK, TV>(JsonOperationContext ctx, BlittableJsonReaderObject json, string name, Func<BlittableJsonReaderObject, TV> converter)
         {
             var isStringKey = typeof(TK) == typeof(string);
             var dictionary = isStringKey ?
@@ -271,7 +272,7 @@ namespace Sparrow.Json
             if (json.TryGet(name, out obj) == false || obj == null)
                 return dictionary;
 
-            foreach (var propertyName in obj.GetPropertyNames())
+            foreach (var propertyName in obj.GetPropertyNames(ctx))
             {
                 object val;
                 if (obj.TryGetMember(propertyName, out val) == false)
@@ -311,7 +312,7 @@ namespace Sparrow.Json
             return dictionary;
         }
 
-        private static Dictionary<string, TEnum> ToDictionaryOfEnum<TEnum>(BlittableJsonReaderObject json, string name)
+        private static Dictionary<string, TEnum> ToDictionaryOfEnum<TEnum>(JsonOperationContext ctx,BlittableJsonReaderObject json, string name)
         {
             var dic = new Dictionary<string, TEnum>(StringComparer.OrdinalIgnoreCase);
 
@@ -320,7 +321,7 @@ namespace Sparrow.Json
             if (json.TryGet(name, out obj) == false || obj == null)
                 return dic;
 
-            foreach (var propertyName in obj.GetPropertyNames())
+            foreach (var propertyName in obj.GetPropertyNames(ctx))
             {
                 string val;
                 if (obj.TryGet(propertyName, out val))
@@ -331,7 +332,7 @@ namespace Sparrow.Json
             return dic;
         }
 
-        private static Dictionary<string, string> ToDictionaryOfString(BlittableJsonReaderObject json, string name)
+        private static Dictionary<string, string> ToDictionaryOfString(JsonOperationContext ctx,BlittableJsonReaderObject json, string name)
         {
             var dic = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -340,7 +341,7 @@ namespace Sparrow.Json
             if (json.TryGet(name, out obj) == false || obj == null)
                 return dic;
 
-            foreach (var propertyName in obj.GetPropertyNames())
+            foreach (var propertyName in obj.GetPropertyNames(ctx))
             {
                 object val;
                 if (obj.TryGet(propertyName, out val))
@@ -351,7 +352,7 @@ namespace Sparrow.Json
             return dic;
         }
 
-        private static Dictionary<string, List<T>> ToDictionaryOfList<T>(BlittableJsonReaderObject json, string name, Func<BlittableJsonReaderObject, T> converter)
+        private static Dictionary<string, List<T>> ToDictionaryOfList<T>(JsonOperationContext ctx, BlittableJsonReaderObject json, string name, Func<BlittableJsonReaderObject, T> converter)
         {
             var dic = new Dictionary<string, List<T>>(StringComparer.OrdinalIgnoreCase);
 
@@ -360,13 +361,13 @@ namespace Sparrow.Json
             if (json.TryGet(name, out obj) == false || obj == null)
                 return dic;
 
-            foreach (var propertyName in obj.GetPropertyNames())
+            foreach (var propertyName in obj.GetPropertyNames(ctx))
             {
                 BlittableJsonReaderArray array;
                 if (obj.TryGet(propertyName, out array))
                 {
                     var list = new List<T>(array.Length);
-                    foreach (BlittableJsonReaderObject item in array)
+                    foreach (BlittableJsonReaderObject item in array.GetItems(ctx))
                     {
                         list.Add(converter(item));
                     }
@@ -376,7 +377,7 @@ namespace Sparrow.Json
             return dic;
         }
 
-        private static Dictionary<string, List<string>> ToDictionaryOfStringList(BlittableJsonReaderObject json, string name)
+        private static Dictionary<string, List<string>> ToDictionaryOfStringList(JsonOperationContext ctx,BlittableJsonReaderObject json, string name)
         {
             var dic = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
@@ -385,13 +386,13 @@ namespace Sparrow.Json
             if (json.TryGet(name, out obj) == false || obj == null)
                 return dic;
 
-            foreach (var propertyName in obj.GetPropertyNames())
+            foreach (var propertyName in obj.GetPropertyNames(ctx))
             {
                 BlittableJsonReaderArray array;
                 if (obj.TryGet(propertyName, out array))
                 {
                     var list = new List<string>(array.Length);
-                    foreach (object item in array)
+                    foreach (object item in array.GetItems(ctx))
                     {
                         list.Add(item?.ToString());
                     }
@@ -401,7 +402,7 @@ namespace Sparrow.Json
             return dic;
         }
 
-        private static Dictionary<string, string[]> ToDictionaryOfStringArray(BlittableJsonReaderObject json, string name)
+        private static Dictionary<string, string[]> ToDictionaryOfStringArray(JsonOperationContext ctx, BlittableJsonReaderObject json, string name)
         {
             var dic = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
 
@@ -410,7 +411,7 @@ namespace Sparrow.Json
             if (json.TryGet(name, out obj) == false || obj == null)
                 return dic;
 
-            foreach (var propertyName in obj.GetPropertyNames())
+            foreach (var propertyName in obj.GetPropertyNames(ctx))
             {
                 BlittableJsonReaderArray val;
                 if (obj.TryGet(propertyName, out val))
@@ -418,7 +419,7 @@ namespace Sparrow.Json
                     var array = new string[val.Length];
                     for (int i = 0; i < val.Length; i++)
                     {
-                        array[i] = val[i]?.ToString();
+                        array[i] = val.GetValueTokenTupleByIndex(ctx, i).Value?.ToString();
                     }
                     dic[propertyName] = array;
                 }
@@ -426,7 +427,9 @@ namespace Sparrow.Json
             return dic;
         }
 
-        private static Dictionary<string, Dictionary<string, string[]>> ToDictionaryOfDictionaryOfStringArray(BlittableJsonReaderObject json, string name)
+        private static Dictionary<string, Dictionary<string, string[]>> ToDictionaryOfDictionaryOfStringArray(
+            JsonOperationContext ctx,
+            BlittableJsonReaderObject json, string name)
         {
             var dic = new Dictionary<string, Dictionary<string, string[]>>(StringComparer.OrdinalIgnoreCase);
 
@@ -435,14 +438,14 @@ namespace Sparrow.Json
             if (json.TryGet(name, out obj) == false || obj == null)
                 return dic;
 
-            foreach (var propertyName in obj.GetPropertyNames())
+            foreach (var propertyName in obj.GetPropertyNames(ctx))
             {
                 BlittableJsonReaderObject result;
                 if (obj.TryGet(propertyName, out result))
                 {
                     var prop = new Dictionary<string, string[]>();
                     dic[propertyName] = prop;
-                    foreach (var innerPropName in result.GetPropertyNames())
+                    foreach (var innerPropName in result.GetPropertyNames(ctx))
                     {
                         BlittableJsonReaderArray val;
                         if (result.TryGet(innerPropName, out val))
@@ -450,7 +453,7 @@ namespace Sparrow.Json
                             var array = new string[val.Length];
                             for (int i = 0; i < val.Length; i++)
                             {
-                                array[i] = val[i]?.ToString();
+                                array[i] = val.GetValueTokenTupleByIndex(ctx, i).Value?.ToString();
                             }
                             prop[innerPropName] = array;
                         }
@@ -462,7 +465,7 @@ namespace Sparrow.Json
             return dic;
         }
 
-        private static TCollection ToCollectionOfString<TCollection>(BlittableJsonReaderObject json, string name)
+        private static TCollection ToCollectionOfString<TCollection>(JsonOperationContext ctx, BlittableJsonReaderObject json, string name)
             where TCollection : ICollection<string>, new()
         {
             var collection = new TCollection();
@@ -471,13 +474,13 @@ namespace Sparrow.Json
             if (json.TryGet(name, out jsonArray) == false || jsonArray == null)
                 return collection;
 
-            foreach (var value in jsonArray)
+            foreach (var value in jsonArray.GetItems(ctx))
                 collection.Add(value.ToString());
 
             return collection;
         }
 
-        private static string[] ToArrayOfString(BlittableJsonReaderObject json, string name)
+        private static string[] ToArrayOfString(JsonOperationContext ctx,BlittableJsonReaderObject json, string name)
         {
             var collection = new List<string>();
 
@@ -485,7 +488,7 @@ namespace Sparrow.Json
             if (json.TryGet(name, out jsonArray) == false || jsonArray == null)
                 return collection.ToArray();
 
-            foreach (var value in jsonArray)
+            foreach (var value in jsonArray.GetItems(ctx))
                 collection.Add(value.ToString());
 
             return collection.ToArray();
@@ -508,7 +511,7 @@ namespace Sparrow.Json
             return converter(obj);
         }
 
-        private static List<T> ToList<T>(BlittableJsonReaderObject json, string name, Func<BlittableJsonReaderObject, T> converter)
+        private static List<T> ToList<T>(JsonOperationContext ctx,BlittableJsonReaderObject json, string name, Func<BlittableJsonReaderObject, T> converter)
         {
             var list = new List<T>();
 
@@ -516,13 +519,13 @@ namespace Sparrow.Json
             if (json.TryGet(name, out array) == false || array == null)
                 return list;
 
-            foreach (BlittableJsonReaderObject item in array.Items)
+            foreach (BlittableJsonReaderObject item in array.GetItems(ctx))
                 list.Add(converter(item));
 
             return list;
         }
 
-        private static T[] ToArray<T>(BlittableJsonReaderObject json, string name, Func<BlittableJsonReaderObject, T> converter)
+        private static T[] ToArray<T>(JsonOperationContext ctx,BlittableJsonReaderObject json, string name, Func<BlittableJsonReaderObject, T> converter)
         {
             var list = new List<T>();
 
@@ -530,7 +533,7 @@ namespace Sparrow.Json
             if (json.TryGet(name, out array) == false || array == null)
                 return list.ToArray();
 
-            foreach (BlittableJsonReaderObject item in array.Items)
+            foreach (BlittableJsonReaderObject item in array.GetItems(ctx))
                 list.Add(converter(item));
 
             return list.ToArray();

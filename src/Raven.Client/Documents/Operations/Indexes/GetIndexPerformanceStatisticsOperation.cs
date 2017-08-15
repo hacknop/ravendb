@@ -22,16 +22,18 @@ namespace Raven.Client.Documents.Operations.Indexes
 
         public RavenCommand<IndexPerformanceStats[]> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetIndexPerformanceStatisticsCommand(conventions, _indexNames);
+            return new GetIndexPerformanceStatisticsCommand(context, conventions, _indexNames);
         }
 
         private class GetIndexPerformanceStatisticsCommand : RavenCommand<IndexPerformanceStats[]>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly DocumentConventions _conventions;
             private readonly string[] _indexNames;
 
-            public GetIndexPerformanceStatisticsCommand(DocumentConventions conventions, string[] indexNames)
+            public GetIndexPerformanceStatisticsCommand(JsonOperationContext ctx, DocumentConventions conventions, string[] indexNames)
             {
+                _ctx = ctx;
                 _conventions = conventions;
                 _indexNames = indexNames;
             }
@@ -58,7 +60,8 @@ namespace Raven.Client.Documents.Operations.Indexes
                 var stats = new IndexPerformanceStats[results.Length];
                 for (var i = 0; i < results.Length; i++)
                 {
-                    stats[i] = (IndexPerformanceStats)_conventions.DeserializeEntityFromBlittable(typeof(IndexPerformanceStats), (BlittableJsonReaderObject)results[i]);
+                    var item = results.GetValueTokenTupleByIndex(_ctx, i).Value;
+                    stats[i] = (IndexPerformanceStats)_conventions.DeserializeEntityFromBlittable(_ctx, typeof(IndexPerformanceStats), (BlittableJsonReaderObject)item);
                 }
 
                 Result = stats;

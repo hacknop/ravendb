@@ -41,7 +41,7 @@ namespace Raven.Client.Documents.Session
                 var type = entity.GetType();
 
                 var changes = TryRemoveIdentityProperty(reader, type, _session.Conventions);
-                changes |= TrySimplifyJson(reader);
+                changes |= TrySimplifyJson(_session.Context, reader);
 
                 if (changes)
                     reader = _session.Context.ReadObject(reader, "convert/entityToBlittable");
@@ -62,7 +62,7 @@ namespace Raven.Client.Documents.Session
                 var type = entity.GetType();
 
                 var changes = TryRemoveIdentityProperty(reader, type, conventions);
-                changes |= TrySimplifyJson(reader);
+                changes |= TrySimplifyJson(context, reader);
 
                 if (changes)
                     reader = context.ReadObject(reader, "convert/entityToBlittable");
@@ -97,13 +97,13 @@ namespace Raven.Client.Documents.Session
                     var type = Type.GetType(documentType);
                     if (type != null && entityType.IsAssignableFrom(type))
                     {
-                        entity = _session.Conventions.DeserializeEntityFromBlittable(type, document);
+                        entity = _session.Conventions.DeserializeEntityFromBlittable(_session.Context, type, document);
                     }
                 }
 
                 if (Equals(entity, defaultValue))
                 {
-                    entity = _session.Conventions.DeserializeEntityFromBlittable(entityType, document);
+                    entity = _session.Conventions.DeserializeEntityFromBlittable(_session.Context, entityType, document);
                 }
 
                 if (id != null)
@@ -121,12 +121,7 @@ namespace Raven.Client.Documents.Session
         /// <summary>
         /// Converts a BlittableJsonReaderObject to an entity without a session.
         /// </summary>
-        /// <param name="entityType"></param>
-        /// <param name="id">The id.</param>
-        /// <param name="document">The document found.</param>
-        /// <param name="conventions">The conventions.</param>
-        /// <returns>The converted entity</returns>
-        public static object ConvertToEntity(Type entityType, string id, BlittableJsonReaderObject document, DocumentConventions conventions)
+        public static object ConvertToEntity(JsonOperationContext ctx, Type entityType, string id, BlittableJsonReaderObject document, DocumentConventions conventions)
         {
             try
             {
@@ -139,13 +134,13 @@ namespace Raven.Client.Documents.Session
                     var type = Type.GetType(documentType);
                     if (type != null && entityType.IsAssignableFrom(type))
                     {
-                        entity = conventions.DeserializeEntityFromBlittable(type, document);
+                        entity = conventions.DeserializeEntityFromBlittable(ctx, type, document);
                     }
                 }
 
                 if (Equals(entity, defaultValue))
                 {
-                    entity = conventions.DeserializeEntityFromBlittable(entityType, document);
+                    entity = conventions.DeserializeEntityFromBlittable(ctx, entityType, document);
                 }
 
                 return entity;
@@ -170,17 +165,17 @@ namespace Raven.Client.Documents.Session
             return true;
         }
 
-        private static bool TrySimplifyJson(BlittableJsonReaderObject document)
+        private static bool TrySimplifyJson(JsonOperationContext context, BlittableJsonReaderObject document)
         {
             var simplified = false;
-            foreach (var propertyName in document.GetPropertyNames())
+            foreach (var propertyName in document.GetPropertyNames(context))
             {
                 var propertyValue = document[propertyName];
 
                 var propertyArray = propertyValue as BlittableJsonReaderArray;
                 if (propertyArray != null)
                 {
-                    simplified |= TrySimplifyJson(propertyArray);
+                    simplified |= TrySimplifyJson(context, propertyArray);
                     continue;
                 }
 
@@ -191,7 +186,7 @@ namespace Raven.Client.Documents.Session
                 string type;
                 if (propertyObject.TryGet(Constants.Json.Fields.Type, out type) == false)
                 {
-                    simplified |= TrySimplifyJson(propertyObject);
+                    simplified |= TrySimplifyJson(context, propertyObject);
                     continue;
                 }
 
@@ -215,22 +210,22 @@ namespace Raven.Client.Documents.Session
 
                 document.Modifications[propertyName] = values;
 
-                simplified |= TrySimplifyJson(values);
+                simplified |= TrySimplifyJson(context, values);
             }
 
             return simplified;
         }
 
-        private static bool TrySimplifyJson(BlittableJsonReaderArray array)
+        private static bool TrySimplifyJson(JsonOperationContext context, BlittableJsonReaderArray array)
         {
             var simplified = false;
-            foreach (var item in array)
+            foreach (var item in array.GetItems(context))
             {
                 var itemObject = item as BlittableJsonReaderObject;
                 if (itemObject == null)
                     continue;
 
-                simplified |= TrySimplifyJson(itemObject);
+                simplified |= TrySimplifyJson(context, itemObject);
             }
 
             return simplified;

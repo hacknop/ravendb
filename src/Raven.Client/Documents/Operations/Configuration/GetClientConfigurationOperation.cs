@@ -11,11 +11,18 @@ namespace Raven.Client.Documents.Operations.Configuration
     {
         public RavenCommand<Result> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetClientConfigurationCommand();
+            return new GetClientConfigurationCommand(context);
         }
 
         internal class GetClientConfigurationCommand : RavenCommand<Result>
         {
+            private readonly JsonOperationContext _context;
+
+            public GetClientConfigurationCommand(JsonOperationContext context)
+            {
+                _context = context;
+            }
+
             public override bool IsReadRequest => false;
 
             public override HttpRequestMessage CreateRequest(JsonOperationContext ctx, ServerNode node, out string url)
@@ -35,7 +42,7 @@ namespace Raven.Client.Documents.Operations.Configuration
                 if (response == null)
                     return;
 
-                Result = JsonDeserializationClient.ClientConfigurationResult(response);
+                Result = JsonDeserializationClient.ClientConfigurationResult(_context, response);
             }
         }
 

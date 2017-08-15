@@ -28,8 +28,8 @@ namespace Raven.Client.Documents.Session
             var results = new AttachmentName[attachments.Length];
             for (var i = 0; i < attachments.Length; i++)
             {
-                var attachment = (BlittableJsonReaderObject)attachments[i];
-                results[i] = JsonDeserializationClient.AttachmentName(attachment);
+                var attachment = (BlittableJsonReaderObject)attachments.GetValueTokenTupleByIndex(_context, i).Value;
+                results[i] = JsonDeserializationClient.AttachmentName(_context, attachment);
             }
             return results;
         }

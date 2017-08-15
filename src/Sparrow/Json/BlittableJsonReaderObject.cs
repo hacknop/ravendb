@@ -10,7 +10,7 @@ using Sparrow.Json.Parsing;
 
 namespace Sparrow.Json
 {
-    public unsafe class BlittableJsonReaderObject : BlittableJsonReaderBase, IDisposable
+    public unsafe class BlittableJsonReaderObject : BlittableJsonReaderBase
     {
         private AllocatedMemoryData _allocatedMemory;
         private UnmanagedWriteBuffer _buffer;
@@ -28,22 +28,18 @@ namespace Sparrow.Json
 
         public override string ToString()
         {
+            using(var tmpCtx = JsonOperationContext.ShortTermSingleUse())
             using (var memoryStream = new MemoryStream())
             {
-                WriteJsonTo(memoryStream);
+                tmpCtx.Write(memoryStream, this);
                 memoryStream.Position = 0;
 
                 return new StreamReader(memoryStream).ReadToEnd();
             }
         }
 
-        public void WriteJsonTo(Stream stream)
-        {
-            _context.Write(stream, this);
-        }
 
-        public BlittableJsonReaderObject(byte* mem, int size, JsonOperationContext context, UnmanagedWriteBuffer buffer = default(UnmanagedWriteBuffer))
-            : base(context)
+        public BlittableJsonReaderObject(byte* mem, int size, UnmanagedWriteBuffer buffer = default(UnmanagedWriteBuffer))
         {
             if (size == 0)
                 ThrowOnZeroSize(size);
@@ -109,7 +105,6 @@ namespace Sparrow.Json
         }
 
         public BlittableJsonReaderObject(int pos, BlittableJsonReaderObject parent, BlittableJsonToken type)
-            : base(parent._context)
         {
             _parent = parent;
             _mem = parent._mem;
@@ -171,7 +166,7 @@ namespace Sparrow.Json
         /// Returns an array of property names, ordered in the order it was stored 
         /// </summary>
         /// <returns></returns>
-        public string[] GetPropertyNames()
+        public string[] GetPropertyNames(JsonOperationContext ctx)
         {
             var offsets = new int[_propCount];
             var propertyNames = new string[_propCount];
@@ -185,7 +180,7 @@ namespace Sparrow.Json
                 int id;
                 GetPropertyTypeAndPosition(i, metadataSize, out token, out position, out id);
                 offsets[i] = position;
-                propertyNames[i] = GetPropertyName(id);
+                propertyNames[i] = GetPropertyName(ctx, id);
             }
 
             // sort according to offsets
@@ -195,7 +190,7 @@ namespace Sparrow.Json
             return propertyNames;
         }
 
-        private LazyStringValue GetPropertyName(int propertyId)
+        private LazyStringValue GetPropertyName(JsonOperationContext ctx,int propertyId)
         {
             var propertyNameOffsetPtr = _propNames + sizeof(byte) + propertyId * _propNamesDataOffsetSize;
             var propertyNameOffset = ReadNumber(propertyNameOffsetPtr, _propNamesDataOffsetSize);
@@ -203,7 +198,7 @@ namespace Sparrow.Json
             // Get the relative "In Document" position of the property Name
             var propRelativePos = _propNames - propertyNameOffset - _mem;
 
-            var propertyName = ReadStringLazily((int)propRelativePos);
+            var propertyName = ReadStringLazily(ctx, (int)propRelativePos);
             return propertyName;
         }
 
@@ -443,7 +438,7 @@ namespace Sparrow.Json
         }
 
 
-        public bool TryGetMember(StringSegment name, out object result)
+        public bool TryGetMember(JsonOperationContext ctx,StringSegment name, out object result)
         {
             if (_mem == null)
                 goto ThrowDisposed;
@@ -468,11 +463,11 @@ namespace Sparrow.Json
             int position;
             int propertyId;
             GetPropertyTypeAndPosition(index, metadataSize, out token, out position, out propertyId);
-            result = GetObject(token, (int)(_objStart - _mem - position));
+            result = GetObject(ctx,token, (int)(_objStart - _mem - position));
 
             if (NoCache == false && result is BlittableJsonReaderBase)
             {
-                AddToCache(name, result, index);
+                AddToCache(ctx, name, result, index);
             }
 
             Return: return opResult;
@@ -483,11 +478,11 @@ namespace Sparrow.Json
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void AddToCache(StringSegment name, object result, int index)
+        private void AddToCache(JsonOperationContext ctx, StringSegment name, object result, int index)
         {
             if (_objectsPathCache == null)
             {
-                _context.AcquirePathCache(out _objectsPathCache, out _objectsPathCacheByIndex);
+                ctx.AcquirePathCache(out _objectsPathCache, out _objectsPathCacheByIndex);
             }
             _objectsPathCache[name] = result;
             _objectsPathCacheByIndex[index] = result;
@@ -510,7 +505,7 @@ namespace Sparrow.Json
             public BlittableJsonToken Token;
         }
 
-        public void GetPropertyByIndex(int index, ref PropertyDetails prop, bool addObjectToCache = false)
+        public void GetPropertyByIndex(JsonOperationContext ctx, int index, ref PropertyDetails prop, bool addObjectToCache = false)
         {
             if (_mem == null)
                 ThrowObjectDisposed();
@@ -524,7 +519,7 @@ namespace Sparrow.Json
             int propertyId;
             GetPropertyTypeAndPosition(index, metadataSize, out token, out position, out propertyId);
 
-            var stringValue = GetPropertyName(propertyId);
+            var stringValue = GetPropertyName(ctx, propertyId);
 
             prop.Token = token;
             prop.Name = stringValue;
@@ -535,11 +530,11 @@ namespace Sparrow.Json
                 return;
             }
 
-            var value = GetObject(token, (int)(_objStart - _mem - position));
+            var value = GetObject(ctx, token, (int)(_objStart - _mem - position));
 
             if (NoCache == false && addObjectToCache)
             {
-                AddToCache(stringValue.ToString(), value, index);
+                AddToCache(ctx, stringValue.ToString(), value, index);
 
             }
 
@@ -558,13 +553,13 @@ namespace Sparrow.Json
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetPropertyIndex(StringSegment name)
+        public int GetPropertyIndex(JsonOperationContext ctx,StringSegment name)
         {
             if (_propCount == 0)
                 goto NotFound;
 
             int min = 0, max = _propCount - 1;
-            var comparer = _context.GetLazyStringForFieldWithCaching(name);
+            var comparer = ctx.GetLazyStringForFieldWithCaching(name);
 
             long currentOffsetSize = _currentOffsetSize;
             long currentPropertyIdSize = _currentPropertyIdSize;
@@ -679,20 +674,20 @@ namespace Sparrow.Json
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal object GetObject(BlittableJsonToken type, int position)
+        internal object GetObject(JsonOperationContext ctx, BlittableJsonToken type, int position)
         {
             BlittableJsonToken actualType = type & TypesMask;
             if (actualType == BlittableJsonToken.String)
-                return ReadStringLazily(position);
+                return ReadStringLazily(ctx, position);
             if (actualType == BlittableJsonToken.Integer)
                 return ReadVariableSizeLong(position);
             if (actualType == BlittableJsonToken.StartObject)
                 return new BlittableJsonReaderObject(position, _parent ?? this, type) { NoCache = NoCache };
 
-            return GetObjectUnlikely(type, position, actualType);
+            return GetObjectUnlikely(ctx, type, position, actualType);
         }
 
-        private object GetObjectUnlikely(BlittableJsonToken type, int position, BlittableJsonToken actualType)
+        private object GetObjectUnlikely(JsonOperationContext ctx,BlittableJsonToken type, int position, BlittableJsonToken actualType)
         {
             switch (actualType)
             {
@@ -704,25 +699,25 @@ namespace Sparrow.Json
                         NoCache = NoCache
                     };
                 case BlittableJsonToken.CompressedString:
-                    return ReadCompressStringLazily(position);
+                    return ReadCompressStringLazily(ctx, position);
                 case BlittableJsonToken.Boolean:
                     return ReadNumber(_mem + position, 1) == 1;
                 case BlittableJsonToken.Null:
                     return null;
                 case BlittableJsonToken.LazyNumber:
-                    return new LazyNumberValue(ReadStringLazily(position));
+                    return new LazyNumberValue(ReadStringLazily(ctx, position));
             }
 
             throw new ArgumentOutOfRangeException((type).ToString());
         }
 
-        public void Dispose()
+        public void Dispose(JsonOperationContext ctx)
         {
             if (_mem == null) //double dispose will do nothing
                 return;
             if (_allocatedMemory != null && _buffer.IsDisposed == false)
             {
-                _context.ReturnMemory(_allocatedMemory);
+                ctx.ReturnMemory(_allocatedMemory);
                 _allocatedMemory = null;
             }
 
@@ -738,7 +733,7 @@ namespace Sparrow.Json
                     disposable?.Dispose();
                 }
 
-                _context.ReleasePathCache(_objectsPathCache, _objectsPathCacheByIndex);
+                ctx.ReleasePathCache(_objectsPathCache, _objectsPathCacheByIndex);
             }
 
             _buffer.Dispose();
@@ -761,7 +756,7 @@ namespace Sparrow.Json
         {
             var mem = context.GetMemory(Size);
             CopyTo(mem.Address);
-            var cloned = new BlittableJsonReaderObject(mem.Address, Size, context)
+            var cloned = new BlittableJsonReaderObject(mem.Address, Size)
             {
                 _allocatedMemory = mem
             };
@@ -982,7 +977,7 @@ namespace Sparrow.Json
                     case BlittableJsonToken.EmbeddedBlittable:
                         byte offsetLen;
                         stringLength = ReadVariableSizeInt(propValueOffset, out offsetLen);
-                        var blittableJsonReaderObject = new BlittableJsonReaderObject(_mem + propValueOffset + offsetLen, stringLength, _context);
+                        var blittableJsonReaderObject = new BlittableJsonReaderObject(_mem + propValueOffset + offsetLen, stringLength);
                         blittableJsonReaderObject.BlittableValidation();
                         break;
                     default:
@@ -993,13 +988,13 @@ namespace Sparrow.Json
             return current;
         }
 
-        public void AddItemsToStream<T>(ManualBlittableJsonDocumentBuilder<T> writer)
+        public void AddItemsToStream<T>(JsonOperationContext ctx,ManualBlittableJsonDocumentBuilder<T> writer)
             where T : struct, IUnmanagedWriteBuffer
         {
             for (var i = 0; i < Count; i++)
             {
                 var prop = new PropertyDetails();
-                GetPropertyByIndex(i, ref prop);
+                GetPropertyByIndex(ctx,i, ref prop);
                 writer.WritePropertyName(prop.Name);
                 writer.WriteValue(ProcessTokenTypeFlags(prop.Token), prop.Value);
             }
@@ -1061,7 +1056,7 @@ namespace Sparrow.Json
             return false;
         }
 
-        protected bool Equals(BlittableJsonReaderObject other)
+        protected bool Equals(JsonOperationContext ctx, BlittableJsonReaderObject other)
         {
             if (_size != other.Size)
                 return false;
@@ -1069,7 +1064,7 @@ namespace Sparrow.Json
             if (_propCount != other._propCount)
                 return false;
 
-            foreach (var propertyName in GetPropertyNames())
+            foreach (var propertyName in GetPropertyNames(ctx))
             {
                 object result;
                 if (other.TryGetMember(propertyName, out result) == false)
@@ -1093,7 +1088,7 @@ namespace Sparrow.Json
         }
 
         [Conditional("DEBUG")]
-        public static void AssertNoModifications(BlittableJsonReaderObject data, string id, bool assertChildren, bool assertRemovals = true, bool assertProperties = true)
+        public static void AssertNoModifications(JsonOperationContext ctx, BlittableJsonReaderObject data, string id, bool assertChildren, bool assertRemovals = true, bool assertProperties = true)
         {
             if (assertRemovals == false && assertProperties == false)
                 throw new InvalidOperationException($"Both {nameof(assertRemovals)} and {nameof(assertProperties)} cannot be set to false.");
@@ -1112,13 +1107,13 @@ namespace Sparrow.Json
             if (assertChildren == false)
                 return;
 
-            foreach (var propertyName in data.GetPropertyNames())
+            foreach (var propertyName in data.GetPropertyNames(ctx))
             {
                 var property = data[propertyName];
                 var inner = property as BlittableJsonReaderObject;
                 if (inner != null)
                 {
-                    AssertNoModifications(inner, id, assertChildren: true);
+                    AssertNoModifications(ctx, inner, id, assertChildren: true);
                     continue;
                 }
 
@@ -1126,30 +1121,15 @@ namespace Sparrow.Json
                 if (innerArray == null)
                     continue;
 
-                foreach (var item in innerArray)
+                foreach (var item in innerArray.GetItems(ctx))
                 {
                     var innerItem = item as BlittableJsonReaderObject;
                     if (innerItem == null)
                         continue;
 
-                    AssertNoModifications(innerItem, id, assertChildren: true);
+                    AssertNoModifications(ctx, innerItem, id, assertChildren: true);
                 }
             }
-        }
-
-        public bool Contains(LazyStringValue propertyName)
-        {
-            var metadataSize = (_currentOffsetSize + _currentPropertyIdSize + sizeof(byte));
-
-            for (int i = 0; i < _propCount; i++)
-            {
-                GetPropertyTypeAndPosition(i, metadataSize, out BlittableJsonToken token, out int position, out int id);
-
-                if (propertyName == GetPropertyName(id))
-                    return true;
-            }
-
-            return false;
         }
     }
 }

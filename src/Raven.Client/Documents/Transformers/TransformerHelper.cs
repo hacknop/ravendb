@@ -19,7 +19,7 @@ namespace Raven.Client.Documents.Transformers
 
             for (var i = 0; i < transformedResult.Results.Length; i++)
             {
-                var item = transformedResult.Results[i] as BlittableJsonReaderObject;
+                var item = transformedResult.Results.GetValueTokenTupleByIndex(session.Context, i).Value as BlittableJsonReaderObject;
                 if (item == null)
                 {
                     if (ids != null)
@@ -41,7 +41,7 @@ namespace Raven.Client.Documents.Transformers
         {
             for (var i = 0; i < transformedResult.Results.Length; i++)
             {
-                var item = transformedResult.Results[i] as BlittableJsonReaderObject;
+                var item = transformedResult.Results.GetValueTokenTupleByIndex(session.Context, i).Value as BlittableJsonReaderObject;
                 if (item == null)
                     continue;
 
@@ -93,30 +93,30 @@ namespace Raven.Client.Documents.Transformers
         {
             for (var i = 0; i < array.Length; i++)
             {
-                var token = array.GetValueTokenTupleByIndex(i).Item2;
+                var val = array.GetValueTokenTupleByIndex(session.Context, i);
 
-                switch (token)
+                switch (val.Type)
                 {
                     case BlittableJsonToken.StartArray:
-                        foreach (var inner in ParseValuesFromBlittableArray(type, session, array[i] as BlittableJsonReaderArray))
+                        foreach (var inner in ParseValuesFromBlittableArray(type, session, val.Value as BlittableJsonReaderArray))
                             yield return inner;
                         break;
                     case BlittableJsonToken.StartObject:
-                        yield return session.DeserializeFromTransformer(type, null, array[i] as BlittableJsonReaderObject);
+                        yield return session.DeserializeFromTransformer(type, null, val.Value as BlittableJsonReaderObject);
                         break;
                     case BlittableJsonToken.String:
-                        var lazyString = array[i] as LazyStringValue;
+                        var lazyString = val.Value as LazyStringValue;
                         if (lazyString != null)
                             yield return lazyString.ToString();
                         break;
                     case BlittableJsonToken.CompressedString:
-                        var lazyCompressedString = array[i] as LazyCompressedStringValue;
+                        var lazyCompressedString = val.Value as LazyCompressedStringValue;
                         if (lazyCompressedString != null)
                             yield return lazyCompressedString.ToString();
                         break;
                     default:
                         // TODO, check if other types need special handling as well
-                        yield return array[i];
+                        yield return val.Value;
                         break;
                 }
             }

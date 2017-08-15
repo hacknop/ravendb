@@ -10,12 +10,18 @@ namespace Raven.Client.ServerWide.Operations
     {
         public RavenCommand<BuildNumber> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new GetBuildNumberCommand();
+            return new GetBuildNumberCommand(ctx);
         }
 
         private class GetBuildNumberCommand : RavenCommand<BuildNumber>
         {
+            private readonly JsonOperationContext _ctx;
             public override bool IsReadRequest => true;
+
+            public GetBuildNumberCommand(JsonOperationContext ctx)
+            {
+                _ctx = ctx;
+            }
 
             public override HttpRequestMessage CreateRequest(JsonOperationContext ctx, ServerNode node, out string url)
             {
@@ -32,7 +38,7 @@ namespace Raven.Client.ServerWide.Operations
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.BuildNumber(response);
+                Result = JsonDeserializationClient.BuildNumber(_ctx, response);
             }
         }
     }

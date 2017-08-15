@@ -94,14 +94,14 @@ namespace Raven.Client.Documents.Session
                 var id = metadata.GetId();
 
                 json = _parent.Context.ReadObject(json, id);
-                var entity = QueryOperation.Deserialize<T>(id, json, metadata, _projectionFields, true, _parent);
+                var entity = QueryOperation.Deserialize<T>(_parent.Context,id, json, metadata, _projectionFields, true, _parent);
 
                 var streamResult = new StreamResult<T>
                 {
                     ChangeVector = changeVector,
                     Id = id,
                     Document = entity,
-                    Metadata = new MetadataAsDictionary(metadata)
+                    Metadata = new MetadataAsDictionary(_parent.Context, metadata)
                 };
                 return streamResult;
             }
@@ -123,7 +123,7 @@ namespace Raven.Client.Documents.Session
                         Id = id,
                         ChangeVector = changeVector,
                         Document = value,
-                        Metadata = new MetadataAsDictionary(metadata)
+                        Metadata = new MetadataAsDictionary(_parent.Context, metadata)
                     };
                 }
             }

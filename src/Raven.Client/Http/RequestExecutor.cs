@@ -198,7 +198,7 @@ namespace Raven.Client.Http
 
                 using (ContextPool.AllocateOperationContext(out JsonOperationContext context))
                 {
-                    var command = new GetClientConfigurationOperation.GetClientConfigurationCommand();
+                    var command = new GetClientConfigurationOperation.GetClientConfigurationCommand(context);
 
                     var (currentIndex, currentNode) = ChooseNodeForRequest(command, 0);
                     await ExecuteAsync(currentNode, currentIndex, context, command, shouldRetry: false).ConfigureAwait(false);
@@ -237,7 +237,7 @@ namespace Raven.Client.Http
 
                 using (ContextPool.AllocateOperationContext(out JsonOperationContext context))
                 {
-                    var command = new GetTopologyCommand();
+                    var command = new GetTopologyCommand(context);
 
                     await ExecuteAsync(node, null, context, command, shouldRetry: false).ConfigureAwait(false);
 
@@ -956,9 +956,14 @@ namespace Raven.Client.Http
                 try
                 {
                     ms.Position = 0;
-                    using (var responseJson = context.ReadForMemory(ms, "RequestExecutor/HandleServerDown/ReadResponseContent"))
+                    var responseJson = context.ReadForMemory(ms, "RequestExecutor/HandleServerDown/ReadResponseContent");
+                    try
                     {
-                        command.FailedNodes.Add(chosenNode, ExceptionDispatcher.Get(JsonDeserializationClient.ExceptionSchema(responseJson), response.StatusCode));
+                        command.FailedNodes.Add(chosenNode, ExceptionDispatcher.Get(JsonDeserializationClient.ExceptionSchema(context, responseJson), response.StatusCode));
+                    }
+                    finally
+                    {
+                        responseJson.Dispose(context);
                     }
                 }
                 catch

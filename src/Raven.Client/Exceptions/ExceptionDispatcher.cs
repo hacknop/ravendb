@@ -64,63 +64,71 @@ namespace Raven.Client.Exceptions
                 throw new ArgumentNullException(nameof(response));
 
             using (var stream = await RequestExecutor.ReadAsStreamUncompressedAsync(response).ConfigureAwait(false))
-            using (var json = await GetJson(context, response, stream).ConfigureAwait(false))
             {
-                var schema = GetExceptionSchema(response, json);
-
-                if (response.StatusCode == HttpStatusCode.Conflict)
-                {
-                    ThrowConflict(schema, json);
-                    return;
-                }
-
-                var type = GetType(schema.Type);
-                if (type == null)
-                    throw RavenException.Generic(schema.Error, json);
-
-                Exception exception;
+                var json = await GetJson(context, response, stream).ConfigureAwait(false);
                 try
                 {
-                    string message;
-                    if (additionalErrorInfo != null)
+                    var schema = GetExceptionSchema(context, response, json);
+
+                    if (response.StatusCode == HttpStatusCode.Conflict)
                     {
-                        var sb = new StringBuilder(schema.Error);
-                        additionalErrorInfo(sb);
-                        message = sb.ToString();
+                        ThrowConflict(schema, json);
+                        return;
                     }
-                    else
+
+                    var type = GetType(schema.Type);
+                    if (type == null)
+                        throw RavenException.Generic(schema.Error, json);
+
+                    Exception exception;
+                    try
                     {
-                        message = schema.Error;
+                        string message;
+                        if (additionalErrorInfo != null)
+                        {
+                            var sb = new StringBuilder(schema.Error);
+                            additionalErrorInfo(sb);
+                            message = sb.ToString();
+                        }
+                        else
+                        {
+                            message = schema.Error;
+                        }
+                        exception = (Exception)Activator.CreateInstance(type, message);
                     }
-                    exception = (Exception)Activator.CreateInstance(type, message);
+                    catch (Exception)
+                    {
+                        throw RavenException.Generic(schema.Error, json);
+                    }
+
+                    if (typeof(RavenException).IsAssignableFrom(type) == false)
+                        throw new RavenException(schema.Error, exception);
+
+                    if (type == typeof(TransformerCompilationException))
+                    {
+                        var transformerCompilationException = (TransformerCompilationException)exception;
+                        json.TryGet(nameof(TransformerCompilationException.TransformerDefinitionProperty),
+                            out transformerCompilationException.TransformerDefinitionProperty);
+                        json.TryGet(nameof(TransformerCompilationException.ProblematicText), out transformerCompilationException.ProblematicText);
+
+                        throw transformerCompilationException;
+                    }
+
+                    if (type == typeof(IndexCompilationException))
+                    {
+                        var indexCompilationException = (IndexCompilationException)exception;
+                        json.TryGet(nameof(IndexCompilationException.IndexDefinitionProperty), out indexCompilationException.IndexDefinitionProperty);
+                        json.TryGet(nameof(IndexCompilationException.ProblematicText), out indexCompilationException.ProblematicText);
+
+                        throw indexCompilationException;
+                    }
+
+                    throw exception;
                 }
-                catch (Exception)
+                finally
                 {
-                    throw RavenException.Generic(schema.Error, json);
+                    json.Dispose(context);
                 }
-
-                if (typeof(RavenException).IsAssignableFrom(type) == false)
-                    throw new RavenException(schema.Error, exception);
-
-                if (type == typeof(TransformerCompilationException))
-                {
-                    var transformerCompilationException = (TransformerCompilationException)exception;
-                    json.TryGet(nameof(TransformerCompilationException.TransformerDefinitionProperty), out transformerCompilationException.TransformerDefinitionProperty);
-                    json.TryGet(nameof(TransformerCompilationException.ProblematicText), out transformerCompilationException.ProblematicText);
-
-                    throw transformerCompilationException;
-                }
-
-                if (type == typeof(IndexCompilationException))
-                {
-                    var indexCompilationException = (IndexCompilationException)exception;
-                    json.TryGet(nameof(IndexCompilationException.IndexDefinitionProperty), out indexCompilationException.IndexDefinitionProperty);
-                    json.TryGet(nameof(IndexCompilationException.ProblematicText), out indexCompilationException.ProblematicText);
-
-                    throw indexCompilationException;
-                }
-
-                throw exception;
             }
         }
 
@@ -140,12 +148,12 @@ namespace Raven.Client.Exceptions
             return type;
         }
 
-        private static ExceptionSchema GetExceptionSchema(HttpResponseMessage response, BlittableJsonReaderObject json)
+        private static ExceptionSchema GetExceptionSchema(JsonOperationContext context, HttpResponseMessage response, BlittableJsonReaderObject json)
         {
             ExceptionSchema schema;
             try
             {
-                schema = JsonDeserializationClient.ExceptionSchema(json);
+                schema = JsonDeserializationClient.ExceptionSchema(context, json);
             }
             catch (Exception e)
             {

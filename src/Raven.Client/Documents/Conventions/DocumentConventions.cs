@@ -45,7 +45,7 @@ namespace Raven.Client.Documents.Conventions
 
         private readonly IList<Tuple<Type, Func<ValueType, string>>> _listOfRegisteredIdLoadConventions = new List<Tuple<Type, Func<ValueType, string>>>();
         private ClientConfiguration _originalConfiguration;
-        public Func<Type, BlittableJsonReaderObject, object> DeserializeEntityFromBlittable;
+        public Func<JsonOperationContext, Type, BlittableJsonReaderObject, object> DeserializeEntityFromBlittable;
 
         protected Dictionary<Type, MemberInfo> IdPropertyCache = new Dictionary<Type, MemberInfo>();
 

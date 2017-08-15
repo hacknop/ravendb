@@ -21,18 +21,20 @@ namespace Raven.Client.ServerWide.Operations
 
         public RavenCommand<ModifyCustomFunctionsResult> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new ModifyCustomFunctionsCommand(_database, _functions);
+            return new ModifyCustomFunctionsCommand(ctx, _database, _functions);
         }
     }
 
     public class ModifyCustomFunctionsCommand : RavenCommand<ModifyCustomFunctionsResult>
     {
+        private readonly JsonOperationContext _ctx;
         private readonly string _database;
         private readonly string _functions;
         public override bool IsReadRequest => false;
 
-        public ModifyCustomFunctionsCommand(string database, string functions)
+        public ModifyCustomFunctionsCommand(JsonOperationContext ctx, string database, string functions)
         {
+            _ctx = ctx;
             _database = database;
             _functions = functions;
         }
@@ -62,7 +64,7 @@ namespace Raven.Client.ServerWide.Operations
             if (response == null)
                 ThrowInvalidResponse();
 
-            Result = JsonDeserializationClient.ModifyCustomFunctionResult(response);
+            Result = JsonDeserializationClient.ModifyCustomFunctionResult(_ctx, response);
         }
     }
 }

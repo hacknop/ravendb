@@ -12,15 +12,17 @@ namespace Raven.Client.Documents.Operations
     {
         public RavenCommand<ReplicationPerformance> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetReplicationPerformanceStatisticsCommand(conventions);
+            return new GetReplicationPerformanceStatisticsCommand(context, conventions);
         }
 
         private class GetReplicationPerformanceStatisticsCommand : RavenCommand<ReplicationPerformance>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly DocumentConventions _conventions;
 
-            public GetReplicationPerformanceStatisticsCommand(DocumentConventions conventions)
+            public GetReplicationPerformanceStatisticsCommand(JsonOperationContext ctx, DocumentConventions conventions)
             {
+                _ctx = ctx;
                 _conventions = conventions ?? throw new ArgumentNullException(nameof(conventions));
             }
 
@@ -41,7 +43,7 @@ namespace Raven.Client.Documents.Operations
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = (ReplicationPerformance)EntityToBlittable.ConvertToEntity(typeof(ReplicationPerformance), "replication/performance", response, _conventions);
+                Result = (ReplicationPerformance)EntityToBlittable.ConvertToEntity(_ctx,typeof(ReplicationPerformance), "replication/performance", response, _conventions);
             }
         }
     }

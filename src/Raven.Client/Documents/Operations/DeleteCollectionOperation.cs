@@ -18,15 +18,17 @@ namespace Raven.Client.Documents.Operations
 
         public RavenCommand<OperationIdResult> GetCommand(IDocumentStore store, DocumentConventions conventions, JsonOperationContext context, HttpCache cache)
         {
-            return new DeleteCollectionCommand(_collectionName);
+            return new DeleteCollectionCommand(context, _collectionName);
         }
 
         private class DeleteCollectionCommand : RavenCommand<OperationIdResult>
         {
+            private readonly JsonOperationContext _context;
             private readonly string _collectionName;
 
-            public DeleteCollectionCommand(string collectionName)
+            public DeleteCollectionCommand(JsonOperationContext context, string collectionName)
             {
+                _context = context;
                 _collectionName = collectionName ?? throw new ArgumentNullException(nameof(collectionName));
             }
 
@@ -47,7 +49,7 @@ namespace Raven.Client.Documents.Operations
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.OperationIdResult(response);
+                Result = JsonDeserializationClient.OperationIdResult(_context, response);
             }
 
             public override bool IsReadRequest => false;

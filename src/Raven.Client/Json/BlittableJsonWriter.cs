@@ -10,6 +10,7 @@ namespace Raven.Client.Json
     {
         private readonly ManualBlittableJsonDocumentBuilder<UnmanagedWriteBuffer> _manualBlittableJsonDocumentBuilder;
         private bool _first;
+        private readonly JsonOperationContext _context;
         private readonly DocumentInfo _documentInfo;
 
         public BlittableJsonWriter(JsonOperationContext context, DocumentInfo documentInfo = null,
@@ -18,6 +19,7 @@ namespace Raven.Client.Json
             _manualBlittableJsonDocumentBuilder = new ManualBlittableJsonDocumentBuilder<UnmanagedWriteBuffer>(context, mode ?? BlittableJsonDocumentBuilder.UsageMode.None, writer);
             _manualBlittableJsonDocumentBuilder.Reset(mode ?? BlittableJsonDocumentBuilder.UsageMode.None);
             _manualBlittableJsonDocumentBuilder.StartWriteObjectDocument();
+            _context = context;
             _documentInfo = documentInfo;
             _first = true;
         }
@@ -88,7 +90,7 @@ namespace Raven.Client.Json
                 foreach (var id in ids)
                 {
                     var propertyDetails = new BlittableJsonReaderObject.PropertyDetails();
-                    _documentInfo.Metadata.GetPropertyByIndex(id, ref propertyDetails);
+                    _documentInfo.Metadata.GetPropertyByIndex(_context, id, ref propertyDetails);
                     _manualBlittableJsonDocumentBuilder.WritePropertyName(propertyDetails.Name);
 
                     switch (propertyDetails.Token & BlittableJsonReaderBase.TypesMask)
@@ -99,13 +101,13 @@ namespace Raven.Client.Json
                             if (array != null)
                             {
                                 var propDetails = new BlittableJsonReaderObject.PropertyDetails();
-                                foreach (BlittableJsonReaderObject entry in array)
+                                foreach (BlittableJsonReaderObject entry in array.GetItems(_context))
                                 {
                                     _manualBlittableJsonDocumentBuilder.StartWriteObject();
                                     var propsIndexes = entry.GetPropertiesByInsertionOrder();
                                     foreach (var index in propsIndexes)
                                     {
-                                        entry.GetPropertyByIndex(index, ref propDetails);
+                                        entry.GetPropertyByIndex(_context, index, ref propDetails);
                                         _manualBlittableJsonDocumentBuilder.WritePropertyName(propDetails.Name);
                                         switch (propDetails.Token)
                                         {

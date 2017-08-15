@@ -19,16 +19,18 @@ namespace Raven.Client.ServerWide.Operations.Certificates
 
         public RavenCommand<CertificateDefinition[]> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetCertificatesCommand(_start, _pageSize);
+            return new GetCertificatesCommand(context, _start, _pageSize);
         }
 
         private class GetCertificatesCommand : RavenCommand<CertificateDefinition[]>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly int _start;
             private readonly int _pageSize;
 
-            public GetCertificatesCommand(int start, int pageSize)
+            public GetCertificatesCommand(JsonOperationContext ctx, int start, int pageSize)
             {
+                _ctx = ctx;
                 _start = start;
                 _pageSize = pageSize;
             }
@@ -52,7 +54,7 @@ namespace Raven.Client.ServerWide.Operations.Certificates
                 if (response == null)
                     return;
 
-                Result = JsonDeserializationClient.GetCertificatesResponse(response).Results;
+                Result = JsonDeserializationClient.GetCertificatesResponse(_ctx, response).Results;
             }
         }
     }

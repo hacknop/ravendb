@@ -220,10 +220,15 @@ namespace Raven.Client.Documents.Commands.MultiGet
                         using (var builder = new BlittableJsonDocumentBuilder(context, BlittableJsonDocumentBuilder.UsageMode.None, "multi_get/result", parser, state))
                         {
                             UnmanagedJsonParserHelper.ReadObject(builder, stream, parser, buffer);
-                            using (var headersJson = builder.CreateReader())
+                            var headersJson = builder.CreateReader();
+                            try
                             {
-                                foreach (var propertyName in headersJson.GetPropertyNames())
+                                foreach (var propertyName in headersJson.GetPropertyNames(context))
                                     getResponse.Headers[propertyName] = headersJson[propertyName].ToString();
+                            }
+                            finally
+                            {
+                                headersJson.Dispose(context);
                             }
                         }
                         continue;

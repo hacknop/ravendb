@@ -25,19 +25,22 @@ namespace Raven.Client.Documents.Commands
 
         private readonly string _startWith;
         private readonly string _matches;
+        private readonly JsonOperationContext _ctx;
         private readonly int _start;
         private readonly int _pageSize;
         private readonly string _exclude;
         private readonly string _startAfter;
 
-        public GetDocumentCommand(int start, int pageSize)
+        public GetDocumentCommand(JsonOperationContext ctx, int start, int pageSize)
         {
+            _ctx = ctx;
             _start = start;
             _pageSize = pageSize;
         }
 
-        public GetDocumentCommand(string id, string[] includes, string transformer, Dictionary<string, object> transformerParameters, bool metadataOnly)
+        public GetDocumentCommand(JsonOperationContext ctx, string id, string[] includes, string transformer, Dictionary<string, object> transformerParameters, bool metadataOnly)
         {
+            _ctx = ctx;
             _id = id;
             _includes = includes;
             _transformer = transformer;
@@ -162,7 +165,7 @@ namespace Raven.Client.Documents.Commands
                 return;
             }
 
-            Result = JsonDeserializationClient.GetDocumentResult(response);
+            Result = JsonDeserializationClient.GetDocumentResult(_ctx, response);
         }
 
         public override bool IsReadRequest => true;

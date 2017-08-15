@@ -9,7 +9,9 @@ namespace Raven.Client.Documents.Operations
 {
     public class GetIdentitiesCommand : RavenCommand<Dictionary<string, long>>
     {
-        private static readonly Func<BlittableJsonReaderObject, IdentitiesResult> _deserializeIdentities = 
+        private readonly JsonOperationContext _ctx;
+
+        private static readonly Func<JsonOperationContext,BlittableJsonReaderObject, IdentitiesResult> _deserializeIdentities = 
             JsonDeserializationBase.GenerateJsonDeserializationRoutine<IdentitiesResult>();
 
         // ReSharper disable once ClassNeverInstantiated.Local
@@ -19,6 +21,11 @@ namespace Raven.Client.Documents.Operations
         }
 
         public override bool IsReadRequest => true;
+
+        public GetIdentitiesCommand(JsonOperationContext ctx)
+        {
+            _ctx = ctx;
+        }
 
         public override HttpRequestMessage CreateRequest(JsonOperationContext ctx, ServerNode node, out string url)
         {
@@ -33,7 +40,7 @@ namespace Raven.Client.Documents.Operations
 
         public override void SetResponse(BlittableJsonReaderObject response, bool fromCache)
         {
-            Result = _deserializeIdentities(response).Identities;
+            Result = _deserializeIdentities(_ctx, response).Identities;
         }
     }
 
@@ -41,7 +48,7 @@ namespace Raven.Client.Documents.Operations
     {
         public RavenCommand<Dictionary<string, long>> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetIdentitiesCommand();
+            return new GetIdentitiesCommand(context);
         }
     }
 }

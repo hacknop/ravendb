@@ -11,11 +11,18 @@ namespace Raven.Client.Documents.Operations.Indexes
     {
         public RavenCommand<IndexStats[]> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetIndexesStatisticsCommand();
+            return new GetIndexesStatisticsCommand(context);
         }
 
         private class GetIndexesStatisticsCommand : RavenCommand<IndexStats[]>
         {
+            private readonly JsonOperationContext _context;
+
+            public GetIndexesStatisticsCommand(JsonOperationContext context)
+            {
+                _context = context;
+            }
+
             public override HttpRequestMessage CreateRequest(JsonOperationContext ctx, ServerNode node, out string url)
             {
                 url = $"{node.Url}/databases/{node.Database}/indexes/stats";
@@ -31,7 +38,7 @@ namespace Raven.Client.Documents.Operations.Indexes
                 if (response == null)
                     ThrowInvalidResponse();
 
-                var results = JsonDeserializationClient.GetIndexStatisticsResponse(response).Results;
+                var results = JsonDeserializationClient.GetIndexStatisticsResponse(_context, response).Results;
                 Result = results;
             }
 

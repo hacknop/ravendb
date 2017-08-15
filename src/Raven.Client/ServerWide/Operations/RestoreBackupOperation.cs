@@ -20,17 +20,19 @@ namespace Raven.Client.ServerWide.Operations
 
         public RavenCommand<RestoreBackupOperationResult> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new RestoreBackupCommand(_restoreConfiguration);
+            return new RestoreBackupCommand(ctx, _restoreConfiguration);
         }
     }
 
     public class RestoreBackupCommand : RavenCommand<RestoreBackupOperationResult>
     {
         public override bool IsReadRequest => false;
+        private readonly JsonOperationContext _ctx;
         private readonly RestoreBackupConfiguration _restoreConfiguration;
 
-        public RestoreBackupCommand(RestoreBackupConfiguration restoreConfiguration)
+        public RestoreBackupCommand(JsonOperationContext ctx,RestoreBackupConfiguration restoreConfiguration)
         {
+            _ctx = ctx;
             _restoreConfiguration = restoreConfiguration;
         }
 
@@ -55,7 +57,7 @@ namespace Raven.Client.ServerWide.Operations
             if(response == null)
                 ThrowInvalidResponse();
 
-            Result = JsonDeserializationClient.RestoreResultOperationResult(response);
+            Result = JsonDeserializationClient.RestoreResultOperationResult(_ctx, response);
         }
     }
 

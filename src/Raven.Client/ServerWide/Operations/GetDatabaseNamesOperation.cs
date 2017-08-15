@@ -18,16 +18,18 @@ namespace Raven.Client.ServerWide.Operations
 
         public RavenCommand<string[]> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new GetDatabaseNamesCommand(_start, _pageSize);
+            return new GetDatabaseNamesCommand(ctx, _start, _pageSize);
         }
 
         private class GetDatabaseNamesCommand : RavenCommand<string[]>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly int _start;
             private readonly int _pageSize;
 
-            public GetDatabaseNamesCommand(int start, int pageSize)
+            public GetDatabaseNamesCommand(JsonOperationContext ctx, int start, int pageSize)
             {
+                _ctx = ctx;
                 _start = start;
                 _pageSize = pageSize;
             }
@@ -58,7 +60,7 @@ namespace Raven.Client.ServerWide.Operations
 
                 var result = new string[names.Length];
                 for (var i = 0; i < names.Length; i++)
-                    result[i] = names[i].ToString();
+                    result[i] = names.GetValueTokenTupleByIndex(_ctx, i).Value.ToString();
 
                 Result = result;
             }

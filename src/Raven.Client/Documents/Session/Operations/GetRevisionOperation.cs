@@ -26,7 +26,7 @@ namespace Raven.Client.Documents.Session.Operations
 
         public GetRevisionsCommand CreateRequest()
         {
-            return new GetRevisionsCommand(_id, _start, _pageSize);
+            return new GetRevisionsCommand(_session.Context,_id, _start, _pageSize);
         }
 
         public void SetResult(BlittableArrayResult result)
@@ -39,7 +39,7 @@ namespace Raven.Client.Documents.Session.Operations
             var results = new List<T>(_result.Results.Length);
             for (var i = 0; i < _result.Results.Length; i++)
             {
-                var document = (BlittableJsonReaderObject)_result.Results[i];
+                var document = (BlittableJsonReaderObject)_result.Results.GetValueTokenTupleByIndex(_session.Context, i).Value;
                 var metadata = document.GetMetadata();
                 var id = metadata.GetId();
                 var entity = (T)_session.ConvertToEntity(typeof(T), id, document);

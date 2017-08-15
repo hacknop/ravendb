@@ -22,7 +22,7 @@ namespace Raven.Client.ServerWide.Operations
 
         public RavenCommand<DeleteDatabaseResult> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new DeleteDatabaseCommand(_name, _hardDelete, _fromNode);
+            return new DeleteDatabaseCommand(ctx, _name, _hardDelete, _fromNode);
         }
 
         private class DeleteDatabaseCommand : RavenCommand<DeleteDatabaseResult>
@@ -30,9 +30,12 @@ namespace Raven.Client.ServerWide.Operations
             private readonly string _name;
             private readonly bool _hardDelete;
             private readonly string _fromNode;
-            public DeleteDatabaseCommand(string name, bool hardDelete,string fromNode)
+            private readonly JsonOperationContext _ctx;
+
+            public DeleteDatabaseCommand(JsonOperationContext ctx, string name, bool hardDelete,string fromNode)
             {
                 _name = name ?? throw new ArgumentNullException(nameof(name));
+                _ctx = ctx;
                 _hardDelete = hardDelete;
                 _fromNode = fromNode;
                 ResponseType = RavenCommandResponseType.Object;
@@ -59,7 +62,7 @@ namespace Raven.Client.ServerWide.Operations
 
             public override void SetResponse(BlittableJsonReaderObject response, bool fromCache)
             {
-                Result = JsonDeserializationClient.DeleteDatabaseResult(response);
+                Result = JsonDeserializationClient.DeleteDatabaseResult(_ctx, response);
             }
             
             public override bool IsReadRequest => false;

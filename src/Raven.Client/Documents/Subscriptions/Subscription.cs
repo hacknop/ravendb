@@ -61,7 +61,11 @@ namespace Raven.Client.Documents.Subscriptions
             public BlittableJsonReaderObject RawMetadata { get; internal set; }
 
             private IMetadataDictionary _metadata;
-            public IMetadataDictionary Metadata => _metadata ?? (_metadata = new MetadataAsDictionary(RawMetadata));
+
+            public IMetadataDictionary GetMetadata(JsonOperationContext ctx)
+            {
+                return _metadata ?? (_metadata = new MetadataAsDictionary(ctx, RawMetadata));
+            }
         }
 
         public int NumberOfItemsInBatch;
@@ -140,7 +144,10 @@ namespace Raven.Client.Documents.Subscriptions
                     }
                     else
                     {
-                        instance = (T)EntityToBlittable.ConvertToEntity(typeof(T), id, curDoc, _requestExecutor.Conventions);
+                        using (_requestExecutor.ContextPool.AllocateOperationContext(out var ctx))
+                        {
+                            instance = (T)EntityToBlittable.ConvertToEntity(ctx, typeof(T), id, curDoc, _requestExecutor.Conventions);
+                        }
                     }
 
                     if (string.IsNullOrEmpty(id) == false)
@@ -284,13 +291,13 @@ namespace Raven.Client.Documents.Subscriptions
 
         private async Task<Stream> ConnectToServer()
         {
-            var command = new GetTcpInfoCommand("Subscription/" + _dbName, _dbName);
 
             JsonOperationContext context;
             var requestExecutor = _store.GetRequestExecutor(_dbName);
 
             using (requestExecutor.ContextPool.AllocateOperationContext(out context))
             {
+                var command = new GetTcpInfoCommand(context, "Subscription/" + _dbName, _dbName);
                 if (_redirectNode != null)
                 {
                     try
@@ -338,11 +345,16 @@ namespace Raven.Client.Documents.Subscriptions
                 await _stream.WriteAsync(header, 0, header.Length).ConfigureAwait(false);
                 await _stream.FlushAsync().ConfigureAwait(false);
                 //Reading reply from server
-                using (var response = context.ReadForMemory(_stream, "Subscription/tcp-header-response"))
+                var response = context.ReadForMemory(_stream, "Subscription/tcp-header-response");
+                try
                 {
-                    var reply = JsonDeserializationClient.TcpConnectionHeaderResponse(response);
+                    var reply = JsonDeserializationClient.TcpConnectionHeaderResponse(context, response);
                     if (reply.AuthorizationSuccessful == false)
                         throw new AuthorizationException($"Cannot access database {databaseName} because " + reply.Message);
+                }
+                finally
+                {
+                    response.Dispose(context);
                 }
                 await _stream.WriteAsync(options, 0, options.Length).ConfigureAwait(false);
 
@@ -577,7 +589,7 @@ namespace Raven.Client.Documents.Subscriptions
                     .ConfigureAwait(false);
 
                 blittable.BlittableValidation();
-                return JsonDeserializationClient.SubscriptionNextObjectResult(blittable);
+                return JsonDeserializationClient.SubscriptionNextObjectResult(context, blittable);
             }
             catch (ObjectDisposedException)
             {

@@ -23,11 +23,13 @@ namespace Raven.Client.Json
 
         private readonly Action<JsonReader, State> _setState = ExpressionHelper.CreateFieldSetter<JsonReader, State>("_currentState");
         private readonly Action<JsonReader, JsonToken> _setToken = ExpressionHelper.CreateFieldSetter<JsonReader, JsonToken>("_tokenType");
+        private JsonOperationContext _ctx;
 
-        public void Init(BlittableJsonReaderObject root)
+        public void Init(JsonOperationContext ctx, BlittableJsonReaderObject root)
         {
             _items.Clear();
 
+            _ctx = ctx;
             _setState(this, State.Start);
             _setToken(this, JsonToken.None);
 
@@ -81,7 +83,7 @@ namespace Raven.Client.Json
                 }
                 if (CurrentState != State.Property)
                 {
-                    current.Object.GetPropertyByIndex(current.Buffers.Properties[current.Position],
+                    current.Object.GetPropertyByIndex(_ctx, current.Buffers.Properties[current.Position],
                         ref current.PropertyDetails);
                     SetToken(JsonToken.PropertyName, current.PropertyDetails.Name.ToString());
                     return true;
@@ -98,8 +100,8 @@ namespace Raven.Client.Json
                     return true;
                 }
 
-                var tuple = current.Array.GetValueTokenTupleByIndex(current.Position++);
-                return SetToken(tuple.Item2, tuple.Item1);
+                var tuple = current.Array.GetValueTokenTupleByIndex(_ctx, current.Position++);
+                return SetToken(tuple.Type, tuple.Value);
             }
 
             throw new InvalidOperationException("Shouldn't happen");

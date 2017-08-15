@@ -7,11 +7,13 @@ namespace Raven.Client.Documents.Commands
 {
     public class GetConflictsCommand : RavenCommand<GetConflictsResult>
     {
+        private readonly JsonOperationContext _ctx;
         private readonly string _id;
         public override bool IsReadRequest => true;
 
-        public GetConflictsCommand(string id)
+        public GetConflictsCommand(JsonOperationContext ctx, string id)
         {
+            _ctx = ctx;
             _id = id;
         }
 
@@ -28,7 +30,7 @@ namespace Raven.Client.Documents.Commands
         {
             if (response == null)
                 ThrowInvalidResponse();
-            Result = JsonDeserializationClient.GetConflictsResult(response);
+            Result = JsonDeserializationClient.GetConflictsResult(_ctx, response);
         }
     }
 }

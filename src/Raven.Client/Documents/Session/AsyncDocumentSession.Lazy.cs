@@ -231,6 +231,7 @@ namespace Raven.Client.Documents.Session
             configure?.Invoke(configuration);
 
             var lazyLoadOperation = new LazyTransformerLoadOperation<T>(
+                Context,
                 ids,
                 transformer,
                 configuration.TransformerParameters,
@@ -254,6 +255,7 @@ namespace Raven.Client.Documents.Session
             var idsArray = ids.ToArray();
 
             var lazyLoadOperation = new LazyTransformerLoadOperation<TResult>(
+                Context, 
                 idsArray,
                 transformer,
                 configuration.TransformerParameters,

@@ -11,12 +11,14 @@ namespace Raven.Client.Documents.Commands
     public class PutDocumentCommand : RavenCommand<PutResult>
     {
         private readonly string _id;
+        private readonly JsonOperationContext _ctx;
         private readonly string _changeVector;
         private readonly BlittableJsonReaderObject _document;
 
-        public PutDocumentCommand(string id, string changeVector, BlittableJsonReaderObject document)
+        public PutDocumentCommand(JsonOperationContext ctx, string id, string changeVector, BlittableJsonReaderObject document)
         {
             _id = id ?? throw new ArgumentNullException(nameof(id));
+            _ctx = ctx;
             _changeVector = changeVector;
             _document = document ?? throw new ArgumentNullException(nameof(document));
         }
@@ -39,7 +41,7 @@ namespace Raven.Client.Documents.Commands
 
         public override void SetResponse(BlittableJsonReaderObject response, bool fromCache)
         {
-            Result = JsonDeserializationClient.PutResult(response);
+            Result = JsonDeserializationClient.PutResult(_ctx, response);
         }
 
         public override bool IsReadRequest => false;

@@ -22,16 +22,18 @@ namespace Raven.Client.ServerWide.Operations
 
         public RavenCommand<ConfigureExpirationOperationResult> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new ConfigureExpirationCommand(_configuration, _databaseName);
+            return new ConfigureExpirationCommand(ctx, _configuration, _databaseName);
         }
 
         public class ConfigureExpirationCommand : RavenCommand<ConfigureExpirationOperationResult>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly ExpirationConfiguration _configuration;
             private readonly string _databaseName;
 
-            public ConfigureExpirationCommand(ExpirationConfiguration configuration, string databaseName)
+            public ConfigureExpirationCommand(JsonOperationContext ctx, ExpirationConfiguration configuration, string databaseName)
             {
+                _ctx = ctx;
                 _configuration = configuration;
                 _databaseName = databaseName;
             }
@@ -60,7 +62,7 @@ namespace Raven.Client.ServerWide.Operations
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.ConfigureExpirationOperationResult(response);
+                Result = JsonDeserializationClient.ConfigureExpirationOperationResult(_ctx, response);
             }
         }
     }

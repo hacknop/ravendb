@@ -10,11 +10,18 @@ namespace Raven.Client.ServerWide.Operations.Configuration
     {
         public RavenCommand<ClientConfiguration> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetServerWideClientConfigurationCommand();
+            return new GetServerWideClientConfigurationCommand(context);
         }
 
         private class GetServerWideClientConfigurationCommand : RavenCommand<ClientConfiguration>
         {
+            private readonly JsonOperationContext _context;
+
+            public GetServerWideClientConfigurationCommand(JsonOperationContext context)
+            {
+                _context = context;
+            }
+
             public override bool IsReadRequest => false;
 
             public override HttpRequestMessage CreateRequest(JsonOperationContext ctx, ServerNode node, out string url)
@@ -34,7 +41,7 @@ namespace Raven.Client.ServerWide.Operations.Configuration
                 if (response == null)
                     return;
 
-                Result = JsonDeserializationClient.ClientConfiguration(response);
+                Result = JsonDeserializationClient.ClientConfiguration(_context, response);
             }
         }
     }

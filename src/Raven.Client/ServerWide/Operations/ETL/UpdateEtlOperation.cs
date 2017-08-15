@@ -24,17 +24,19 @@ namespace Raven.Client.ServerWide.Operations.ETL
 
         public RavenCommand<UpdateEtlOperationResult> GetCommand(DocumentConventions conventions, JsonOperationContext ctx)
         {
-            return new UpdateEtlCommand(_taskId, _configuration, _databaseName);
+            return new UpdateEtlCommand(ctx, _taskId, _configuration, _databaseName);
         }
 
         public class UpdateEtlCommand : RavenCommand<UpdateEtlOperationResult>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly long _taskId;
             private readonly EtlConfiguration<T> _configuration;
             private readonly string _databaseName;
 
-            public UpdateEtlCommand(long taskId, EtlConfiguration<T> configuration, string databaseName)
+            public UpdateEtlCommand(JsonOperationContext ctx, long taskId, EtlConfiguration<T> configuration, string databaseName)
             {
+                _ctx = ctx;
                 _taskId = taskId;
                 _configuration = configuration;
                 _databaseName = databaseName;
@@ -64,7 +66,7 @@ namespace Raven.Client.ServerWide.Operations.ETL
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = JsonDeserializationClient.UpdateEtlOperationResult(response);
+                Result = JsonDeserializationClient.UpdateEtlOperationResult(_ctx, response);
             }
         }
     }

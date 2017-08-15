@@ -107,20 +107,21 @@ namespace Raven.Client.Documents.Identity
 
         private async Task GetNextRangeAsync()
         {
-            var hiloCommand = new NextHiLoCommand(_tag, _lastBatchSize, _lastRangeDate, _identityPartsSeparator, Range.Max);
 
             var re = _store.GetRequestExecutor(_dbName);
             JsonOperationContext context;
             using (re.ContextPool.AllocateOperationContext(out context))
             {
+                var hiloCommand = new NextHiLoCommand(context, _tag, _lastBatchSize, _lastRangeDate, _identityPartsSeparator, Range.Max);
                 await re.ExecuteAsync(hiloCommand, context).ConfigureAwait(false);
+
+                _prefix = hiloCommand.Result.Prefix;
+                _serverTag = hiloCommand.Result.ServerTag;
+                _lastRangeDate = hiloCommand.Result.LastRangeAt;
+                _lastBatchSize = hiloCommand.Result.LastSize;
+                Range = new RangeValue(hiloCommand.Result.Low, hiloCommand.Result.High);
             }
 
-            _prefix = hiloCommand.Result.Prefix;
-            _serverTag = hiloCommand.Result.ServerTag;
-            _lastRangeDate = hiloCommand.Result.LastRangeAt;
-            _lastBatchSize = hiloCommand.Result.LastSize;
-            Range = new RangeValue(hiloCommand.Result.Low, hiloCommand.Result.High);
         }
 
         public async Task ReturnUnusedRangeAsync()

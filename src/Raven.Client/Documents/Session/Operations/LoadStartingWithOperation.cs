@@ -61,7 +61,7 @@ namespace Raven.Client.Documents.Session.Operations
             if (_transformer != null)
                 return;
 
-            foreach (BlittableJsonReaderObject document in result.Results)
+            foreach (BlittableJsonReaderObject document in result.Results.GetItems(_session.Context))
             {
                 var newDocumentInfo = DocumentInfo.GetNewDocumentInfo(document);
                 _session.DocumentsById.Add(newDocumentInfo);

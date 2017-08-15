@@ -60,7 +60,7 @@ namespace Raven.Client.Documents.Operations
         /// </summary>
         private async Task FetchOperationStatus()
         {
-            var command = new GetOperationStateCommand(_conventions, _id);
+            var command = new GetOperationStateCommand(_context, _conventions, _id);
 
             await _requestExecutor.ExecuteAsync(command, _context).ConfigureAwait(false);
 

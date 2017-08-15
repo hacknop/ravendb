@@ -11,15 +11,18 @@ namespace Raven.Client.Json
     internal class MetadataAsDictionary : IMetadataDictionary
     {
         private IDictionary<string, object> _metadata;
+        private readonly JsonOperationContext _ctx;
         private readonly BlittableJsonReaderObject _source;
 
-        public MetadataAsDictionary(BlittableJsonReaderObject metadata)
+        public MetadataAsDictionary(JsonOperationContext ctx, BlittableJsonReaderObject metadata)
         {
+            _ctx = ctx;
             _source = metadata;
         }
 
-        public MetadataAsDictionary(Dictionary<string, object> metadata)
+        public MetadataAsDictionary(JsonOperationContext ctx, Dictionary<string, object> metadata)
         {
+            _ctx = ctx;
             _metadata = metadata;
         }
 
@@ -30,7 +33,7 @@ namespace Raven.Client.Json
             foreach (var index in indexes)
             {
                 var propDetails = new BlittableJsonReaderObject.PropertyDetails();
-                _source.GetPropertyByIndex(index, ref propDetails);
+                _source.GetPropertyByIndex(_ctx, index, ref propDetails);
                 _metadata[propDetails.Name] = ConvertValue(propDetails.Value);
             }
         }
@@ -55,7 +58,7 @@ namespace Raven.Client.Json
 
             var obj = value as BlittableJsonReaderObject;
             if (obj != null)
-                return new MetadataAsDictionary(obj);
+                return new MetadataAsDictionary(_ctx, obj);
 
             var array = value as BlittableJsonReaderArray;
             if (array != null)
@@ -63,7 +66,7 @@ namespace Raven.Client.Json
                 var result = new object[array.Length];
                 for (int i = 0; i < array.Length; i++)
                 {
-                    result[i] = ConvertValue(array[i]);
+                    result[i] = ConvertValue(array.GetValueTokenTupleByIndex(_ctx, i).Value);
                 }
                 return result;
             }
@@ -99,7 +102,7 @@ namespace Raven.Client.Json
 
         public bool IsReadOnly => _metadata != null && _metadata.IsReadOnly;
 
-        public ICollection<string> Keys => _metadata != null ? _metadata.Keys : _source.GetPropertyNames();
+        public ICollection<string> Keys => _metadata != null ? _metadata.Keys : _source.GetPropertyNames(_ctx);
 
         public ICollection<object> Values
         {
@@ -111,7 +114,7 @@ namespace Raven.Client.Json
                 foreach (var prop in _source.GetPropertiesByInsertionOrder())
                 {
                     var propDetails = new BlittableJsonReaderObject.PropertyDetails();
-                    _source.GetPropertyByIndex(prop, ref propDetails);
+                    _source.GetPropertyByIndex(_ctx, prop, ref propDetails);
                     values.Add(ConvertValue(propDetails));
                 }
                 return values;

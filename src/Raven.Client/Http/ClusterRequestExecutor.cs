@@ -72,7 +72,7 @@ namespace Raven.Client.Http
 
         protected override Task PerformHealthCheck(ServerNode serverNode, int nodeIndex, JsonOperationContext context)
         {
-            return ExecuteAsync(serverNode, nodeIndex, context, new GetTcpInfoCommand("health-check"), shouldRetry: false);
+            return ExecuteAsync(serverNode, nodeIndex, context, new GetTcpInfoCommand(context, "health-check"), shouldRetry: false);
         }
 
         public override async Task<bool> UpdateTopologyAsync(ServerNode node, int timeout, bool forceUpdate = false)
@@ -89,7 +89,7 @@ namespace Raven.Client.Http
 
                 using (ContextPool.AllocateOperationContext(out JsonOperationContext context))
                 {
-                    var command = new GetClusterTopologyCommand();
+                    var command = new GetClusterTopologyCommand(context);
                     await ExecuteAsync(node, null, context, command, shouldRetry: false).ConfigureAwait(false);
 
                     var serverHash = ServerHash.GetServerHash(node.Url);

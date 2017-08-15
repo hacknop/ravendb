@@ -15,11 +15,13 @@ namespace Raven.Client.Documents.Commands
 {
     public class GetSubscriptionStateCommand: RavenCommand<SubscriptionState>
     {
+        private readonly JsonOperationContext _ctx;
         private readonly string _subscriptionName;
         public override bool IsReadRequest => true;
 
-        public GetSubscriptionStateCommand(string subscriptionName)
+        public GetSubscriptionStateCommand(JsonOperationContext ctx, string subscriptionName)
         {
+            _ctx = ctx;
             _subscriptionName = subscriptionName;
         }
         public override HttpRequestMessage CreateRequest(JsonOperationContext ctx, ServerNode node, out string url)
@@ -35,7 +37,7 @@ namespace Raven.Client.Documents.Commands
 
         public override void SetResponse(BlittableJsonReaderObject response, bool fromCache)
         {
-            Result = JsonDeserializationClient.SubscriptionState(response);
+            Result = JsonDeserializationClient.SubscriptionState(_ctx, response);
         }
     }
 }

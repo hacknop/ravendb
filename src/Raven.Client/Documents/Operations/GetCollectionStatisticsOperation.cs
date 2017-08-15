@@ -10,15 +10,17 @@ namespace Raven.Client.Documents.Operations
     {
         public RavenCommand<CollectionStatistics> GetCommand(DocumentConventions conventions, JsonOperationContext context)
         {
-            return new GetCollectionStatisticsCommand(conventions);
+            return new GetCollectionStatisticsCommand(context, conventions);
         }
 
         private class GetCollectionStatisticsCommand : RavenCommand<CollectionStatistics>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly DocumentConventions _conventions;
 
-            public GetCollectionStatisticsCommand(DocumentConventions conventions)
+            public GetCollectionStatisticsCommand(JsonOperationContext ctx, DocumentConventions conventions)
             {
+                _ctx = ctx;
                 _conventions = conventions ?? throw new ArgumentNullException(nameof(conventions));
             }
 
@@ -38,7 +40,9 @@ namespace Raven.Client.Documents.Operations
                 if (response == null)
                     ThrowInvalidResponse();
 
-                Result = (CollectionStatistics)_conventions.DeserializeEntityFromBlittable(typeof(CollectionStatistics), response);
+                Result = (CollectionStatistics)_conventions.DeserializeEntityFromBlittable(
+                    _ctx, 
+                    typeof(CollectionStatistics), response);
             }
         }
     }
