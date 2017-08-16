@@ -99,7 +99,7 @@ namespace Raven.Server.Documents.Handlers
                 var ids = new string[array.Length];
                 for (int i = 0; i < array.Length; i++)
                 {
-                    ids[i] = array.GetStringByIndex(i);
+                    ids[i] = array.GetStringByIndex(context, i);
                 }
 
                 context.OpenReadTransaction();
@@ -155,11 +155,18 @@ namespace Raven.Server.Documents.Handlers
 
                 if (transformer != null)
                 {
-                    using (var transformerParameters = GetTransformerParameters(context))
-                    using (var scope = transformer.OpenTransformationScope(transformerParameters, null, Database.DocumentsStorage,
-                        Database.TransformerStore, context))
+                    var transformerParameters = GetTransformerParameters(context);
+                    try
                     {
-                        writer.WriteDocuments(context, scope.Transform(documents).ToList(), metadataOnly, out numberOfResults);
+                        using (var scope = transformer.OpenTransformationScope(transformerParameters, null, Database.DocumentsStorage,
+                            Database.TransformerStore, context))
+                        {
+                            writer.WriteDocuments(context, scope.Transform(documents).ToList(), metadataOnly, out numberOfResults);
+                        }
+                    }
+                    finally
+                    {
+                        transformerParameters.Dispose(context);
                     }
                 }
                 else
@@ -572,7 +579,7 @@ namespace Raven.Server.Documents.Handlers
 
                 using (var writer = new StreamWriter(ResponseBodyStream()))
                 {
-                    var codeGenerator = new JsonClassGenerator(lang);
+                    var codeGenerator = new JsonClassGenerator(context,lang);
                     var code = codeGenerator.Execute(document);
                     writer.Write(code);
                 }

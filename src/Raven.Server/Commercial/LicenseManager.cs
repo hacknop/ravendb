@@ -272,7 +272,7 @@ namespace Raven.Server.Commercial
                 using (var context = JsonOperationContext.ShortTermSingleUse())
                 {
                     var json = context.Read(licenseAsStream, "leased license");
-                    var newLicense = JsonDeserializationServer.License(json);
+                    var newLicense = JsonDeserializationServer.License(context, json);
                     if (newLicense.Name == license.Name && newLicense.Id == license.Id &&
                         newLicense.Keys.SequenceEqual(license.Keys))
                         return;

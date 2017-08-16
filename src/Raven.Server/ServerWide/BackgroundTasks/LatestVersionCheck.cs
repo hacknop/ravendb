@@ -57,7 +57,7 @@ namespace Raven.Server.ServerWide.BackgroundTasks
                 using (var context = JsonOperationContext.ShortTermSingleUse())
                 {
                     var json = context.ReadForMemory(stream, "latest/version");
-                    var latestVersionInfo = JsonDeserializationServer.LatestVersionCheckVersionInfo(json);
+                    var latestVersionInfo = JsonDeserializationServer.LatestVersionCheckVersionInfo(context, json);
 
                     if (ServerVersion.Build != ServerVersion.DevBuildNumber &&
                         latestVersionInfo?.BuildNumber > ServerVersion.Build)

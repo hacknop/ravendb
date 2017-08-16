@@ -185,16 +185,16 @@ namespace Raven.Server.Documents.Queries.Faceted
                 var input = await context.ReadForMemoryAsync(stream, "facets");
                 if (input.TryGet("Facets", out BlittableJsonReaderArray array) == false)
                     RequestHandler.ThrowRequiredPropertyNameInRequest("Facets");
-                return ParseFromJson(array);
+                return ParseFromJson(context, array);
             }
         }
 
-        public static unsafe (List<Facet> Facets, long FacetsEtag) ParseFromJson(BlittableJsonReaderArray array)
+        public static unsafe (List<Facet> Facets, long FacetsEtag) ParseFromJson(JsonOperationContext ctx, BlittableJsonReaderArray array)
         {
             var results = new List<Facet>();
 
-            foreach (BlittableJsonReaderObject facetAsJson in array)
-                results.Add(JsonDeserializationServer.Facet(facetAsJson));
+            foreach (BlittableJsonReaderObject facetAsJson in array.GetItems(ctx))
+                results.Add(JsonDeserializationServer.Facet(ctx, facetAsJson));
 
             return (results, Hashing.XXHash32.Calculate(array.Parent.BasePointer, array.Parent.Size));
         }

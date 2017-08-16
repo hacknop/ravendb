@@ -30,7 +30,7 @@ namespace Raven.Server.Documents.Handlers
         public async Task BulkDocs()
         {
             using (ContextPool.AllocateOperationContext(out DocumentsOperationContext context))
-            using (var command = new MergedBatchCommand { Database = Database })
+            using (var command = new MergedBatchCommand(context) { Database = Database })
             {
                 var contentType = HttpContext.Request.ContentType;
                 if (contentType == null ||
@@ -251,6 +251,7 @@ namespace Raven.Server.Documents.Handlers
 
         public class MergedBatchCommand : TransactionOperationsMerger.MergedTransactionCommand, IDisposable
         {
+            private readonly JsonOperationContext _ctx;
             public DynamicJsonArray Reply;
             public ArraySegment<BatchRequestParser.CommandData> ParsedCommands;
             public Queue<AttachmentStream> AttachmentStreams;
@@ -259,6 +260,11 @@ namespace Raven.Server.Documents.Handlers
             public string LastChangeVector;
             private HashSet<string> _documentsToUpdateAfterAttachmentChange;
             public HashSet<string> ModifiedCollections;
+
+            public MergedBatchCommand(JsonOperationContext ctx)
+            {
+                _ctx = ctx;
+            }
 
             public override string ToString()
             {
@@ -428,7 +434,7 @@ namespace Raven.Server.Documents.Handlers
 
                 foreach (var cmd in ParsedCommands)
                 {
-                    cmd.Document?.Dispose();
+                    cmd.Document?.Dispose(_ctx);
                 }
                 BatchRequestParser.ReturnBuffer(ParsedCommands);
                 AttachmentStreamsTempFile?.Dispose();

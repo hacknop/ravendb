@@ -120,7 +120,7 @@ namespace Raven.Server.Smuggler.Documents
         {
             foreach (var reader in ReadArray())
             {
-                using (reader)
+                try
                 {
                     IndexType type;
                     object indexDefinition;
@@ -143,6 +143,10 @@ namespace Raven.Server.Smuggler.Documents
                         IndexDefinition = indexDefinition
                     };
                 }
+                finally
+                {
+                    reader.Dispose(_context);
+                }
             }
         }
 
@@ -150,7 +154,7 @@ namespace Raven.Server.Smuggler.Documents
         {
             foreach (var reader in ReadArray())
             {
-                using (reader)
+                try
                 {
                     TransformerDefinition transformerDefinition;
 
@@ -168,6 +172,10 @@ namespace Raven.Server.Smuggler.Documents
 
                     yield return transformerDefinition;
                 }
+                finally
+                {
+                    reader.Dispose(_context);
+                }
             }
         }
 
@@ -180,7 +188,7 @@ namespace Raven.Server.Smuggler.Documents
         {
             foreach (var reader in ReadArray())
             {
-                using (reader)
+                try
                 {
                     if (reader.TryGet("Key", out string identityKey) == false ||
                         reader.TryGet("Value", out string identityValueString) == false ||
@@ -193,6 +201,10 @@ namespace Raven.Server.Smuggler.Documents
                     }
 
                     yield return new KeyValuePair<string, long>(identityKey, identityValue);
+                }
+                finally
+                {
+                    reader.Dispose(_context);
                 }
             }
         }
@@ -383,6 +395,7 @@ namespace Raven.Server.Smuggler.Documents
                 _returnWriteBuffer = _context.GetManagedBuffer(out _writeBuffer);
 
             attachment.Data = data;
+            attachment.Context=context;
             attachment.Base64HashDispose = Slice.External(context.Allocator, hash, out attachment.Base64Hash);
             attachment.TagDispose = Slice.External(context.Allocator, tag, out attachment.Tag);
 

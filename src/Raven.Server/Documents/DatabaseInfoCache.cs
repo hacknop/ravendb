@@ -54,16 +54,22 @@ namespace Raven.Server.Documents
 
 
                 using (var id = context.GetLazyString(databaseName.ToLowerInvariant()))
-                using (var json = context.ReadObject(databaseInfo, "DatabaseInfo", BlittableJsonDocumentBuilder.UsageMode.ToDisk))
                 {
-                    using (table.Allocate(out TableValueBuilder tvb))
+                    var json = context.ReadObject(databaseInfo, "DatabaseInfo", BlittableJsonDocumentBuilder.UsageMode.ToDisk);
+                    try
                     {
-                        tvb.Add(id.Buffer, id.Size);
-                        tvb.Add(json.BasePointer, json.Size);
+                        using (table.Allocate(out TableValueBuilder tvb))
+                        {
+                            tvb.Add(id.Buffer, id.Size);
+                            tvb.Add(json.BasePointer, json.Size);
 
-                        table.Set(tvb);
+                            table.Set(tvb);
+                        }
                     }
-                }
+                    finally
+                    {
+                        json.Dispose(context);
+                    }}
                 tx.Commit();
             }
         }
@@ -85,7 +91,8 @@ namespace Raven.Server.Documents
                 if (infoTvr.Pointer == null)
                     return false;
 
-                using (var databaseInfoJson = Read(context, ref infoTvr))
+                var databaseInfoJson = Read(ref infoTvr);
+                try
                 {
                     databaseInfoJson.Modifications = new DynamicJsonValue(databaseInfoJson)
                     {
@@ -97,14 +104,18 @@ namespace Raven.Server.Documents
                     ctx.Write(writer, databaseInfoJson);
                     return true;
                 }
+                finally
+                {
+                    databaseInfoJson.Dispose(ctx);
+                }
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe BlittableJsonReaderObject Read(JsonOperationContext context, ref TableValueReader reader)
+        private static unsafe BlittableJsonReaderObject Read(ref TableValueReader reader)
         {
             var ptr = reader.Read(DatabaseInfoSchema.DatabaseInfoTable.JsonIndex, out int size);
-            return new BlittableJsonReaderObject(ptr, size, context);
+            return new BlittableJsonReaderObject(ptr, size);
         }
 
         /// <summary>

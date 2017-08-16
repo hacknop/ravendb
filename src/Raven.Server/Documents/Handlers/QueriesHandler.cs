@@ -174,7 +174,7 @@ namespace Raven.Server.Documents.Handlers
 
             // read from cache here
 
-            return IndexQueryServerSide.Create(json);
+            return IndexQueryServerSide.Create(context, json);
         }
 
         private MoreLikeThisQueryServerSide GetMoreLikeThisQuery(JsonOperationContext context, HttpMethod method)
@@ -203,7 +203,7 @@ namespace Raven.Server.Documents.Handlers
 
             // read from cache here
 
-            return FacetQueryServerSide.Create(json);
+            return FacetQueryServerSide.Create(context, json);
         }
 
         private SuggestionQueryServerSide GetSuggestionQuery(JsonOperationContext context, HttpMethod method)
@@ -295,7 +295,7 @@ namespace Raven.Server.Documents.Handlers
             var returnContextToPool = ContextPool.AllocateOperationContext(out DocumentsOperationContext context); // we don't dispose this as operation is async
 
             var reader = context.Read(RequestBodyStream(), "queries/delete");
-            var query = IndexQueryServerSide.Create(reader);
+            var query = IndexQueryServerSide.Create(context, reader);
 
             ExecuteQueryOperation(query.Metadata, (runner, options, onProgress, token) => runner.Query.ExecuteDeleteQuery(query, options.Query, context, onProgress, token),
                 context, returnContextToPool, Operations.Operations.OperationType.DeleteByIndex);
@@ -317,7 +317,7 @@ namespace Raven.Server.Documents.Handlers
                 throw new BadRequestException("Missing 'Query' property.");
 
             var patch = PatchRequest.Parse(patchJson);
-            var query = IndexQueryServerSide.Create(queryJson);
+            var query = IndexQueryServerSide.Create(context, queryJson);
 
             if (query.Metadata.IsDynamic == false)
             {

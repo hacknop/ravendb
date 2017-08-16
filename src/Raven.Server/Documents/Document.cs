@@ -70,22 +70,6 @@ namespace Raven.Server.Documents
             _hash = null;
         }
 
-        public void RemoveAllPropertiesExceptMetadata()
-        {
-            foreach (var property in Data.GetPropertyNames())
-            {
-                if (string.Equals(property, Constants.Documents.Metadata.Key, StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                if (Data.Modifications == null)
-                    Data.Modifications = new DynamicJsonValue(Data);
-
-                Data.Modifications.Remove(property);
-            }
-
-            _hash = null;
-        }
-
         public bool Expired(DateTime currentDate)
         {
             if (Data.TryGet(Constants.Documents.Metadata.Key, out BlittableJsonReaderObject metadata) == false || 

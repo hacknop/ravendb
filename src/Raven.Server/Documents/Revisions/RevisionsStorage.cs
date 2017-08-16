@@ -186,7 +186,7 @@ namespace Raven.Server.Documents.Revisions
             return Configuration.Default ?? _emptyConfiguration;
         }
 
-        public bool ShouldVersionDocument(CollectionName collectionName, NonPersistentDocumentFlags nonPersistentFlags,
+        public bool ShouldVersionDocument(JsonOperationContext ctx, CollectionName collectionName, NonPersistentDocumentFlags nonPersistentFlags,
             BlittableJsonReaderObject existingDocument, BlittableJsonReaderObject document, ref DocumentFlags documentFlags,
             out RevisionsCollectionConfiguration configuration)
         {
@@ -206,7 +206,7 @@ namespace Raven.Server.Documents.Revisions
                 }
 
                 // compare the contents of the existing and the new document
-                if (DocumentCompare.IsEqualTo(existingDocument, document, false) != DocumentCompareResult.NotEqual)
+                if (DocumentCompare.IsEqualTo(ctx, existingDocument, document, false) != DocumentCompareResult.NotEqual)
                 {
                     // no need to create a new revision, both documents have identical content
                     return false;
@@ -226,7 +226,7 @@ namespace Raven.Server.Documents.Revisions
         {
             Debug.Assert(changeVector != null, "Change vector must be set");
 
-            BlittableJsonReaderObject.AssertNoModifications(document, id, assertChildren: true);
+            BlittableJsonReaderObject.AssertNoModifications(context, document, id, assertChildren: true);
 
             if (collectionName == null)
                 collectionName = _database.DocumentsStorage.ExtractCollectionName(context, id, document);
@@ -404,7 +404,7 @@ namespace Raven.Server.Documents.Revisions
                 return null;
 
             var ptr = tvr.Reader.Read((int)Columns.Document, out int size);
-            var data = new BlittableJsonReaderObject(ptr, size, context);
+            var data = new BlittableJsonReaderObject(ptr, size);
 
             return _documentsStorage.ExtractCollectionName(context, null, data);
         }
@@ -511,7 +511,7 @@ namespace Raven.Server.Documents.Revisions
         public void Delete(DocumentsOperationContext context, string id, BlittableJsonReaderObject deleteRevisionDocument, string changeVector,
             long lastModifiedTicks, NonPersistentDocumentFlags nonPersistentFlags)
         {
-            BlittableJsonReaderObject.AssertNoModifications(deleteRevisionDocument, id, assertChildren: true);
+            BlittableJsonReaderObject.AssertNoModifications(context, deleteRevisionDocument, id, assertChildren: true);
 
             using (DocumentIdWorker.GetLowerIdSliceAndStorageKey(context, id, out Slice lowerId, out Slice idPtr))
             {
@@ -799,7 +799,7 @@ namespace Raven.Server.Documents.Revisions
             };
 
             var ptr = tvr.Read((int)Columns.Document, out size);
-            result.Data = new BlittableJsonReaderObject(ptr, size, context);
+            result.Data = new BlittableJsonReaderObject(ptr, size);
 
             return result;
         }

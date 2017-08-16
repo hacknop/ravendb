@@ -628,7 +628,7 @@ namespace Raven.Server.Rachis
                 );
             }
 
-            var json = new BlittableJsonReaderObject(read.Reader.Base, read.Reader.Length, context);
+            var json = new BlittableJsonReaderObject(read.Reader.Base, read.Reader.Length);
             return JsonDeserializationRachis<ClusterTopology>.Deserialize(json);
         }
 
@@ -640,7 +640,7 @@ namespace Raven.Server.Rachis
             if (read == null)
                 return null;
 
-            return new BlittableJsonReaderObject(read.Reader.Base, read.Reader.Length, context);
+            return new BlittableJsonReaderObject(read.Reader.Base, read.Reader.Length);
         }
 
         public BlittableJsonReaderObject SetTopology(TransactionOperationContext context, ClusterTopology topology)
@@ -968,12 +968,12 @@ namespace Raven.Server.Rachis
                     }
                     if (entry.Flags == RachisEntryFlags.Topology)
                     {
-                        lastTopology?.Dispose();
+                        lastTopology?.Dispose(context);
                         lastTopology = nested;
                     }
                     else
                     {
-                        nested.Dispose();
+                        nested.Dispose(context);
                     }
                 }
             }
@@ -1024,7 +1024,7 @@ namespace Raven.Server.Rachis
                 flags = *(RachisEntryFlags*)reader.Read(3, out int size);
                 Debug.Assert(size == sizeof(RachisEntryFlags));
                 var ptr = reader.Read(2, out size);
-                return new BlittableJsonReaderObject(ptr, size, context);
+                return new BlittableJsonReaderObject(ptr, size);
             }
         }
 

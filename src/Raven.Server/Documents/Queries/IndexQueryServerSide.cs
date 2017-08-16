@@ -33,9 +33,9 @@ namespace Raven.Server.Documents.Queries
             Metadata = new QueryMetadata(Query, queryParameters);
         }
 
-        public static IndexQueryServerSide Create(BlittableJsonReaderObject json)
+        public static IndexQueryServerSide Create(JsonOperationContext ctx, BlittableJsonReaderObject json)
         {
-            var result = JsonDeserializationServer.IndexQuery(json);
+            var result = JsonDeserializationServer.IndexQuery(ctx, json);
 
             if (result.PageSize == 0 && json.TryGet(nameof(PageSize), out int _) == false)
                 result.PageSize = int.MaxValue;

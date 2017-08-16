@@ -77,7 +77,7 @@ namespace Raven.Server.Documents.Handlers
                 {
                     var clientConfigurationJson = ServerStore.Cluster.Read(context, Constants.Configuration.ClientId, out index);
                     return clientConfigurationJson != null
-                        ? JsonDeserializationServer.ClientConfiguration(clientConfigurationJson)
+                        ? JsonDeserializationServer.ClientConfiguration(context, clientConfigurationJson)
                         : null;
                 }
             }

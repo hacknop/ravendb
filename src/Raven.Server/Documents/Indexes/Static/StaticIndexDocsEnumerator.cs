@@ -3,24 +3,27 @@ using System.Collections;
 using System.Collections.Generic;
 using Raven.Client.Documents.Indexes;
 using Raven.Server.Documents.Transformers;
+using Sparrow.Json;
 
 namespace Raven.Server.Documents.Indexes.Static
 {
     public class StaticIndexDocsEnumerator : IIndexedDocumentsEnumerator
     {
+        private readonly JsonOperationContext _ctx;
         private readonly IndexingStatsScope _documentReadStats;
         private readonly IEnumerator<Document> _docsEnumerator;
         protected EnumerationType _enumerationType;
         protected IEnumerable _resultsOfCurrentDocument;
         private readonly MultipleIndexingFunctionsEnumerator _multipleIndexingFunctionsEnumerator;
 
-        protected StaticIndexDocsEnumerator(IEnumerable<Document> docs)
+        protected StaticIndexDocsEnumerator(JsonOperationContext ctx, IEnumerable<Document> docs)
         {
+            _ctx = ctx;
             _docsEnumerator = docs.GetEnumerator();
         }
 
-        public StaticIndexDocsEnumerator(IEnumerable<Document> docs, List<IndexingFunc> funcs, string collection, IndexingStatsScope stats)
-            : this(docs)
+        public StaticIndexDocsEnumerator(JsonOperationContext ctx, IEnumerable<Document> docs, List<IndexingFunc> funcs, string collection, IndexingStatsScope stats)
+            : this(ctx, docs)
         {
             _documentReadStats = stats?.For(IndexingOperation.Map.DocumentRead, start: false);
             _enumerationType = EnumerationType.Index;
@@ -30,11 +33,11 @@ namespace Raven.Server.Documents.Indexes.Static
             if (funcs.Count == 1)
             {
                 _resultsOfCurrentDocument =
-                    new TimeCountingEnumerable(funcs[0](new DynamicIteratonOfCurrentDocumentWrapper(this)), linqStats);
+                    new TimeCountingEnumerable(funcs[0](new DynamicIteratonOfCurrentDocumentWrapper(_ctx, this)), linqStats);
             }
             else
             {
-                _multipleIndexingFunctionsEnumerator = new MultipleIndexingFunctionsEnumerator(funcs, new DynamicIteratonOfCurrentDocumentWrapper(this));
+                _multipleIndexingFunctionsEnumerator = new MultipleIndexingFunctionsEnumerator(funcs, new DynamicIteratonOfCurrentDocumentWrapper(_ctx, this));
                 _resultsOfCurrentDocument = new TimeCountingEnumerable(_multipleIndexingFunctionsEnumerator, linqStats);
             }
 
@@ -45,7 +48,7 @@ namespace Raven.Server.Documents.Indexes.Static
         {
             using (_documentReadStats?.Start())
             {
-                Current?.Data.Dispose();
+                Current?.Data.Dispose(_ctx);
 
                 if (_docsEnumerator.MoveNext() == false)
                 {
@@ -72,7 +75,7 @@ namespace Raven.Server.Documents.Indexes.Static
         public void Dispose()
         {
             _docsEnumerator.Dispose();
-            Current?.Data?.Dispose();
+            Current?.Data?.Dispose(_ctx);
         }
 
         public enum EnumerationType
@@ -83,17 +86,19 @@ namespace Raven.Server.Documents.Indexes.Static
 
         protected class DynamicIteratonOfCurrentDocumentWrapper : IEnumerable<DynamicBlittableJson>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly StaticIndexDocsEnumerator _indexingEnumerator;
             private Enumerator _enumerator;
 
-            public DynamicIteratonOfCurrentDocumentWrapper(StaticIndexDocsEnumerator indexingEnumerator)
+            public DynamicIteratonOfCurrentDocumentWrapper(JsonOperationContext ctx, StaticIndexDocsEnumerator indexingEnumerator)
             {
+                _ctx = ctx;
                 _indexingEnumerator = indexingEnumerator;
             }
 
             public IEnumerator<DynamicBlittableJson> GetEnumerator()
             {
-                return _enumerator ?? (_enumerator = new Enumerator(_indexingEnumerator));
+                return _enumerator ?? (_enumerator = new Enumerator(_ctx, _indexingEnumerator));
             }
 
             IEnumerator IEnumerable.GetEnumerator()
@@ -104,11 +109,13 @@ namespace Raven.Server.Documents.Indexes.Static
             private class Enumerator : IEnumerator<DynamicBlittableJson>
             {
                 private DynamicBlittableJson _dynamicDocument;
+                private readonly JsonOperationContext _ctx;
                 private readonly StaticIndexDocsEnumerator _inner;
                 private Document _seen;
 
-                public Enumerator(StaticIndexDocsEnumerator indexingEnumerator)
+                public Enumerator(JsonOperationContext ctx,StaticIndexDocsEnumerator indexingEnumerator)
                 {
+                    _ctx = ctx;
                     _inner = indexingEnumerator;
                 }
 
@@ -120,9 +127,9 @@ namespace Raven.Server.Documents.Indexes.Static
                     _seen = _inner.Current;
 
                     if (_dynamicDocument == null)
-                        _dynamicDocument = new DynamicBlittableJson(_seen);
+                        _dynamicDocument = new DynamicBlittableJson(_ctx, _seen);
                     else
-                        _dynamicDocument.Set(_seen);
+                        _dynamicDocument.Set(_ctx, _seen);
 
                     Current = _dynamicDocument;
 

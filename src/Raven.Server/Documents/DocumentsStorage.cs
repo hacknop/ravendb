@@ -815,23 +815,23 @@ namespace Raven.Server.Documents
         {
             var document = ParseDocument(context, ref tvr);
 #if DEBUG
-            DebugDisposeReaderAfterTransaction(context.Transaction, document.Data);
-            DocumentPutAction.AssertMetadataWasFiltered(document.Data);
+            DebugDisposeReaderAfterTransaction(context, document.Data);
+            DocumentPutAction.AssertMetadataWasFiltered(context, document.Data);
             AttachmentsStorage.AssertAttachments(document.Data, document.Flags);
 #endif
             return document;
         }
 
         [Conditional("DEBUG")]
-        public static void DebugDisposeReaderAfterTransaction(DocumentsTransaction tx, BlittableJsonReaderObject reader)
+        public static void DebugDisposeReaderAfterTransaction(DocumentsOperationContext ctx, BlittableJsonReaderObject reader)
         {
             if (reader == null)
                 return;
-            Debug.Assert(tx != null);
+            Debug.Assert(ctx.Transaction != null);
             // this method is called to ensure that after the transaction is completed, all the readers are disposed
-            // so we won't have read-after-tx use scenario, which can in rare case corrupt memory. This is a debug
+            // so we won't have read-after-tx use scenario, which can in rare cases corrupt memory. This is a debug
             // helper that is used across the board, but it is meant to assert stuff during debug only
-            tx.InnerTransaction.LowLevelTransaction.OnDispose += state => reader.Dispose();
+            ctx.Transaction.InnerTransaction.LowLevelTransaction.OnDispose += state => reader.Dispose(ctx);
         }
 
         public static Document ParseDocument(JsonOperationContext context, ref TableValueReader tvr)
@@ -842,7 +842,7 @@ namespace Raven.Server.Documents
                 LowerId = TableValueToString(context, (int)DocumentsTable.LowerId, ref tvr),
                 Id = TableValueToId(context, (int)DocumentsTable.Id, ref tvr),
                 Etag = TableValueToEtag((int)DocumentsTable.Etag, ref tvr),
-                Data = new BlittableJsonReaderObject(tvr.Read((int)DocumentsTable.Data, out int size), size, context),
+                Data = new BlittableJsonReaderObject(tvr.Read((int)DocumentsTable.Data, out int size), size),
                 ChangeVector = TableValueToChangeVector(context, (int)DocumentsTable.ChangeVector, ref tvr),
                 LastModified = TableValueToDateTime((int)DocumentsTable.LastModified, ref tvr),
                 Flags = TableValueToFlags((int)DocumentsTable.Flags, ref tvr),

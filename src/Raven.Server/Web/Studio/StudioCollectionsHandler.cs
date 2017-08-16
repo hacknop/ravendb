@@ -95,9 +95,13 @@ namespace Raven.Server.Web.Studio
                                 writer.WriteComma();
                             first = false;
 
-                            using (document.Data)
+                            try
                             {
                                 WriteDocument(writer, context, document, propertiesPreviewToSend, fullPropertiesToSend);
+                            }
+                            finally
+                            {
+                                document.Data.Dispose(context);
                             }
                         }
 
@@ -140,7 +144,7 @@ namespace Raven.Server.Web.Studio
 
             for (int i = 0; i < size; i++)
             {
-                document.Data.GetPropertyByIndex(_buffers.Properties[i], ref prop);
+                document.Data.GetPropertyByIndex(context, _buffers.Properties[i], ref prop);
                 var sendFull = fullPropertiesToSend.Contains(prop.Name);
                 if (sendFull || propertiesPreviewToSend.Contains(prop.Name))
                 {
@@ -195,7 +199,7 @@ namespace Raven.Server.Web.Studio
                 metadata = context.ReadObject(extraMetadataProperties, document.Id);
             }
 
-            writer.WriteMetadata(document, metadata);
+            writer.WriteMetadata(context, document, metadata);
             writer.WriteEndObject();
         }
 
@@ -256,7 +260,7 @@ namespace Raven.Server.Web.Studio
 
             foreach (var document in documents)
             {
-                FetchColumnNames(document.Data, columns, _buffers);
+                FetchColumnNames(context, document.Data, columns, _buffers);
             }
 
             RemoveMetadata(context, columns);
@@ -264,14 +268,14 @@ namespace Raven.Server.Web.Studio
             return columns;
         }
 
-        public static void FetchColumnNames(BlittableJsonReaderObject data, HashSet<LazyStringValue> columns, BlittableJsonReaderObject.PropertiesInsertionBuffer buffers)
+        public static void FetchColumnNames(JsonOperationContext ctx, BlittableJsonReaderObject data, HashSet<LazyStringValue> columns, BlittableJsonReaderObject.PropertiesInsertionBuffer buffers)
         {
             var size = data.GetPropertiesByInsertionOrder(buffers);
             var prop = new BlittableJsonReaderObject.PropertyDetails();
 
             for (var i = 0; i < size; i++)
             {
-                data.GetPropertyByIndex(buffers.Properties[i], ref prop);
+                data.GetPropertyByIndex(ctx, buffers.Properties[i], ref prop);
                 var propName = prop.Name;
                 if (columns.Contains(propName) == false)
                 {
@@ -296,7 +300,7 @@ namespace Raven.Server.Web.Studio
             var reader = context.Read(RequestBodyStream(), "ExcludeIds");
             if (reader.TryGet("ExcludeIds", out BlittableJsonReaderArray ids))
             {
-                foreach (LazyStringValue id in ids)
+                foreach (LazyStringValue id in ids.GetItems(context))
                 {
                     excludeIds.Add(id);
                 }

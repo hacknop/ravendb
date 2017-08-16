@@ -64,15 +64,15 @@ namespace Raven.Server.Documents.Patch
             return this;
         }
 
-        public ObjectInstance ToJsObject(Engine engine, Document document)
+        public ObjectInstance ToJsObject(JsonOperationContext ctx, Engine engine, Document document)
         {
-            var instance = ToJsObject(engine, document.Data);
+            var instance = ToJsObject(ctx, engine, document.Data);
             return ApplyMetadataIfNecessary(instance, document.Id, document.ChangeVector, document.LastModified, document.Flags, document.IndexScore);
         }
 
-        public ObjectInstance ToJsObject(Engine engine, DocumentConflict document, string propertyName)
+        public ObjectInstance ToJsObject(JsonOperationContext ctx, Engine engine, DocumentConflict document, string propertyName)
         {
-            var instance = ToJsObject(engine, document.Doc);
+            var instance = ToJsObject(ctx, engine, document.Doc);
             return ApplyMetadataIfNecessary(instance, document.Id, document.ChangeVector, document.LastModified, flags: null, indexScore: null);
         }
 
@@ -104,9 +104,9 @@ namespace Raven.Server.Documents.Patch
             return instance;
         }
 
-        private static ObjectInstance ToJsObject(Engine engine, BlittableJsonReaderObject json)
+        private static ObjectInstance ToJsObject(JsonOperationContext ctx,Engine engine, BlittableJsonReaderObject json)
         {
-            return new BlittableObjectInstance(engine, json);
+            return new BlittableObjectInstance(ctx, engine, json);
         }
 
         private static string CreatePropertyKey(string key, string property)
@@ -142,7 +142,7 @@ namespace Raven.Server.Documents.Patch
                 {
                     var prop = new BlittableJsonReaderObject.PropertyDetails();
 
-                    blittableObjectInstance.Blittable.GetPropertyByIndex(propertyIndex, ref prop);
+                    blittableObjectInstance.Blittable.GetPropertyByIndex(_context, propertyIndex, ref prop);
 
                     writer.WritePropertyName(prop.Name);
                     if (blittableObjectInstance.Modifications != null && blittableObjectInstance.Modifications.TryGetValue(prop.Name, out var modification))
@@ -216,10 +216,10 @@ namespace Raven.Server.Documents.Patch
                 case BlittableJsonToken.CompressedString:
                     return new JsValue(((LazyCompressedStringValue)propertyDetails.Value).ToString());
                 case BlittableJsonToken.StartObject:
-                    return new BlittableObjectInstance(jintEngine, (BlittableJsonReaderObject)propertyDetails.Value);
+                    return new BlittableObjectInstance(_context, jintEngine, (BlittableJsonReaderObject)propertyDetails.Value);
                 case BlittableJsonToken.StartArray:
                     //return new BlittableObjectArrayInstance(jintEngine, (BlittableJsonReaderArray)propertyDetails.Value);
-                    return BlittableObjectInstance.CreateArrayInstanceBasedOnBlittableArray(jintEngine, propertyDetails.Value as BlittableJsonReaderArray);
+                    return BlittableObjectInstance.CreateArrayInstanceBasedOnBlittableArray(_context,jintEngine, propertyDetails.Value as BlittableJsonReaderArray);
                 default:
                     throw new ArgumentOutOfRangeException(propertyDetails.Token.ToString());
             }
@@ -367,7 +367,7 @@ namespace Raven.Server.Documents.Patch
                 {
                     var prop = new BlittableJsonReaderObject.PropertyDetails();
 
-                    blittableObjectInstance.Blittable.GetPropertyByIndex(propertyIndex, ref prop);
+                    blittableObjectInstance.Blittable.GetPropertyByIndex(_context, propertyIndex, ref prop);
 
                     if (blittableObjectInstance.Modifications != null && blittableObjectInstance.Modifications.TryGetValue(prop.Name, out var modification))
                     {
@@ -420,7 +420,7 @@ namespace Raven.Server.Documents.Patch
                         else
                         {
                             var prop = new BlittableJsonReaderObject.PropertyDetails();
-                            blittableObjectInstance.Blittable.GetPropertyByIndex(propertyIndexInBlittable, ref prop, true);
+                            blittableObjectInstance.Blittable.GetPropertyByIndex(_context, propertyIndexInBlittable, ref prop, true);
                             obj[property.Key] = ToBlittableValue(value, CreatePropertyKey(property.Key, propertyKey), recursive, prop.Token, prop.Value);
                         }
                     }
@@ -527,7 +527,7 @@ namespace Raven.Server.Documents.Patch
         {
         }
 
-        public virtual JsValue LoadDocument(string documentId, Engine engine, ref int totalStatements)
+        public virtual JsValue LoadDocument(JsonOperationContext ctx, string documentId, Engine engine, ref int totalStatements)
         {
             if (_context == null)
                 ThrowDocumentsOperationContextIsNotSet();
@@ -544,7 +544,7 @@ namespace Raven.Server.Documents.Patch
             engine.Options.MaxStatements(totalStatements);
 
             // TODO: Make sure to add Constants.Indexing.Fields.DocumentIdFieldName to document.Data
-            return ToJsObject(engine, document.Data);
+            return ToJsObject(ctx, engine, document.Data);
         }
 
         private static void ThrowDocumentsOperationContextIsNotSet()

@@ -262,7 +262,7 @@ namespace Raven.Server.Documents.Replication
                         }
                         else
                         {
-                            value.Data?.Dispose(); //item.Value.Data is null if tombstone
+                            value.Data?.Dispose(documentsContext); //item.Value.Data is null if tombstone
                         }
                     }
                     _orderedReplicaItems.Clear();

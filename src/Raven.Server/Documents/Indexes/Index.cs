@@ -1873,7 +1873,7 @@ namespace Raven.Server.Documents.Indexes
                 {
                     stopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     for (var i = 0; i < value.Length; i++)
-                        stopWords.Add(value.GetStringByIndex(i));
+                        stopWords.Add(value.GetStringByIndex(documentsContext, i));
                 }
             }
 

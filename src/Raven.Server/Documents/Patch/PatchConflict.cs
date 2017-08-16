@@ -42,9 +42,9 @@ namespace Raven.Server.Documents.Patch
                 var run = new SingleScriptRun(this, patch, scope);
                 try
                 {
-                    run.Prepare(_docsSize);
+                    run.Prepare(context, _docsSize);
                     SetupInputs(scope, run.JintEngine);
-                    run.Execute();
+                    run.Execute(context);
 
                     return TryParse(context, scope, out resolved);
                 }
@@ -132,7 +132,7 @@ namespace Raven.Server.Documents.Patch
                         var prop = new BlittableJsonReaderObject.PropertyDetails();
                         for (int i = 0; i < metadata.Count; i++)
                         {
-                            metadata.GetPropertyByIndex(i, ref prop);
+                            metadata.GetPropertyByIndex(context, i, ref prop);
                             writer.WritePropertyName(prop.Name.ToString());
                             switch (prop.Token & BlittableJsonReaderBase.TypesMask)
                             {

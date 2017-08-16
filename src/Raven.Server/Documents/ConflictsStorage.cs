@@ -201,8 +201,8 @@ namespace Raven.Server.Documents
             if (size > 0)
             {
                 //otherwise this is a tombstone conflict and should be treated as such
-                result.Doc = new BlittableJsonReaderObject(read, size, context);
-                DebugDisposeReaderAfterTransaction(context.Transaction, result.Doc);
+                result.Doc = new BlittableJsonReaderObject(read, size);
+                DebugDisposeReaderAfterTransaction(context, result.Doc);
             }
 
             return result;
@@ -341,10 +341,8 @@ namespace Raven.Server.Documents
                 return NonPersistentDocumentFlags.None;
 
             Debug.Assert(document != null, "This is not a delete conflict so we should also provide the document.");
-            using (var conflictDocument = new BlittableJsonReaderObject(dataPtr, size, context))
-            {
-                _documentsStorage.AttachmentsStorage.DeleteAttachmentConflicts(context, lowerId, document, conflictDocument, changeVector);
-            }
+            var conflictDocument = new BlittableJsonReaderObject(dataPtr, size);
+            _documentsStorage.AttachmentsStorage.DeleteAttachmentConflicts(context, lowerId, document, conflictDocument, changeVector);
             return NonPersistentDocumentFlags.ResolveAttachmentsConflict;
         }
 
@@ -384,8 +382,8 @@ namespace Raven.Server.Documents
                     if (changeVector.CompareTo(currentChangeVector) == 0)
                     {
                         var dataPtr = tvr.Result.Reader.Read((int)ConflictsTable.Data, out int size);
-                        var doc = size == 0 ? null : new BlittableJsonReaderObject(dataPtr, size, context);
-                        DebugDisposeReaderAfterTransaction(context.Transaction, doc);
+                        var doc = size == 0 ? null : new BlittableJsonReaderObject(dataPtr, size);
+                        DebugDisposeReaderAfterTransaction(context, doc);
                         return new DocumentConflict
                         {
                             ChangeVector = currentChangeVector,

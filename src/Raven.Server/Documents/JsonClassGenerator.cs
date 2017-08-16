@@ -4,12 +4,14 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using Raven.Client;
+using Raven.Server.ServerWide.Context;
 using Sparrow.Json;
 
 namespace Raven.Server.Documents
 {
     public class JsonClassGenerator
     {
+        private readonly JsonOperationContext _context;
         private readonly Lazy<IDictionary<Type, FieldType>> _knownTypes = new Lazy<IDictionary<Type, FieldType>>(InitializeKnownTypes, true);
 
         internal IDictionary<Type, FieldType> KnownTypes => _knownTypes.Value;
@@ -193,10 +195,11 @@ namespace Raven.Server.Documents
             }
         }
 
-        public JsonClassGenerator(string language)
+        public JsonClassGenerator(JsonOperationContext context, string language)
         {
             if (string.IsNullOrWhiteSpace(language))
                 throw new ArgumentNullException("language");
+            _context = context;
         }
 
         public string Execute(Document document)
@@ -318,7 +321,7 @@ namespace Raven.Server.Documents
             {
                 // this call ensures properties to be returned in the same order, regardless their storing order
                 var prop = new BlittableJsonReaderObject.PropertyDetails();
-                blittableObject.GetPropertyByIndex(i, ref prop);
+                blittableObject.GetPropertyByIndex(_context, i, ref prop);
 
                 if (prop.Name.ToString().Equals("@metadata", StringComparison.OrdinalIgnoreCase))
                     continue;
@@ -391,7 +394,7 @@ namespace Raven.Server.Documents
 
         private FieldType GuessTokenTypeFromArray(string name, BlittableJsonReaderArray array)
         {
-            var firstElement = array.GetValueTokenTupleByIndex(0);
+            var firstElement = array.GetValueTokenTupleByIndex(_context,0);
 
             switch (firstElement.Item2)
             {

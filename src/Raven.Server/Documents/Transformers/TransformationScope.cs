@@ -63,7 +63,7 @@ namespace Raven.Server.Documents.Transformers
                         continue;
                     }
 
-                    using (docsEnumerator.Current.Data)
+                    try
                     {
                         var values = new DynamicJsonArray();
                         var result = new DynamicJsonValue
@@ -87,11 +87,15 @@ namespace Raven.Server.Documents.Transformers
 
                         yield return document;
                     }
+                    finally
+                    {
+                        docsEnumerator.Current.Data?.Dispose(_context);
+                    }
                 }
             }
             else
             {
-                var groupByEnumerationWrapper = new GroupByTransformationWrapper(documents);
+                var groupByEnumerationWrapper = new GroupByTransformationWrapper(_context, documents);
 
                 var values = new DynamicJsonArray();
                 var result = new DynamicJsonValue
@@ -124,9 +128,9 @@ namespace Raven.Server.Documents.Transformers
         {
             private readonly Enumerator _enumerator = new Enumerator();
 
-            public GroupByTransformationWrapper(IEnumerable<Document> docs)
+            public GroupByTransformationWrapper(JsonOperationContext ctx, IEnumerable<Document> docs)
             {
-                _enumerator.Initialize(docs.GetEnumerator());
+                _enumerator.Initialize(ctx, docs.GetEnumerator());
             }
 
             public IEnumerator<DynamicBlittableJson> GetEnumerator()
@@ -142,10 +146,12 @@ namespace Raven.Server.Documents.Transformers
             private class Enumerator : IEnumerator<DynamicBlittableJson>
             {
                 private IEnumerator<Document> _items;
+                private JsonOperationContext _ctx;
 
-                public void Initialize(IEnumerator<Document> items)
+                public void Initialize(JsonOperationContext ctx,IEnumerator<Document> items)
                 {
                     _items = items;
+                    _ctx = ctx;
                 }
 
                 public bool MoveNext()
@@ -153,7 +159,7 @@ namespace Raven.Server.Documents.Transformers
                     if (_items.MoveNext() == false)
                         return false;
 
-                    Current = new DynamicBlittableJson(_items.Current); // we have to create new instance to properly GroupBy
+                    Current = new DynamicBlittableJson(_ctx, _items.Current); // we have to create new instance to properly GroupBy
 
                     CurrentTransformationScope.Current.Source = Current;
                     return true;

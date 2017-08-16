@@ -63,7 +63,8 @@ namespace Raven.Server.Documents.Handlers
 
                     if (transformer != null)
                     {
-                        using (var transformerParameters = GetTransformerParameters(context))
+                        var transformerParameters = GetTransformerParameters(context);
+                        try
                         {
                             using (var scope = transformer.OpenTransformationScope(transformerParameters, null,
                                 Database.DocumentsStorage,
@@ -71,6 +72,10 @@ namespace Raven.Server.Documents.Handlers
                             {
                                 writer.WriteDocuments(context, scope.Transform(documents), metadataOnly: false, numberOfResults: out int _);
                             }
+                        }
+                        finally
+                        {
+                            transformerParameters.Dispose(context);
                         }
                     }
                     else
@@ -99,7 +104,7 @@ namespace Raven.Server.Documents.Handlers
             using (Database.DocumentsStorage.ContextPool.AllocateOperationContext(out DocumentsOperationContext context))
             {
                 var queryJson = await context.ReadForMemoryAsync(RequestBodyStream(), "index/query");
-                var query = IndexQueryServerSide.Create(queryJson);
+                var query = IndexQueryServerSide.Create(context, queryJson);
 
                 var runner = new QueryRunner(Database, context);
 

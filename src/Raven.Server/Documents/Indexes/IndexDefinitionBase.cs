@@ -355,14 +355,14 @@ namespace Raven.Server.Documents.Indexes
             return name;
         }
 
-        protected static string[] ReadCollections(BlittableJsonReaderObject reader)
+        protected static string[] ReadCollections(JsonOperationContext ctx,BlittableJsonReaderObject reader)
         {
             if (reader.TryGet(nameof(Collections), out BlittableJsonReaderArray jsonArray) == false || jsonArray.Length == 0)
                 throw new InvalidOperationException("No persisted collections");
 
             var result = new string[jsonArray.Length];
             for (var i = 0; i < jsonArray.Length; i++)
-                result[i] = jsonArray.GetStringByIndex(i);
+                result[i] = jsonArray.GetStringByIndex(ctx,i);
 
             return result;
         }
@@ -383,7 +383,7 @@ namespace Raven.Server.Documents.Indexes
             return (IndexPriority)priorityAsInt;
         }
 
-        protected static IndexField[] ReadMapFields(BlittableJsonReaderObject reader)
+        protected static IndexField[] ReadMapFields(JsonOperationContext ctx, BlittableJsonReaderObject reader)
         {
             if (reader.TryGet(nameof(MapFields), out BlittableJsonReaderArray jsonArray) == false)
                 throw new InvalidOperationException("No persisted lock mode");
@@ -391,7 +391,7 @@ namespace Raven.Server.Documents.Indexes
             var fields = new IndexField[jsonArray.Length];
             for (var i = 0; i < jsonArray.Length; i++)
             {
-                var json = jsonArray.GetByIndex<BlittableJsonReaderObject>(i);
+                var json = jsonArray.GetByIndex<BlittableJsonReaderObject>(ctx, i);
 
                 json.TryGet(nameof(IndexField.Name), out string name);
                 json.TryGet(nameof(IndexField.Indexing), out string indexing);

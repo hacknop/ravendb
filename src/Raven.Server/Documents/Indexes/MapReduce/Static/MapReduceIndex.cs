@@ -193,7 +193,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Static
 
         public override IIndexedDocumentsEnumerator GetMapEnumerator(IEnumerable<Document> documents, string collection, TransactionOperationContext indexContext, IndexingStatsScope stats)
         {
-            return new StaticIndexDocsEnumerator(documents, Compiled.Maps[collection], collection, stats);
+            return new StaticIndexDocsEnumerator(indexContext, documents, Compiled.Maps[collection], collection, stats);
         }
 
         public override int HandleMap(LazyStringValue key, IEnumerable mapResults, IndexWriteOperation writer, TransactionOperationContext indexContext, IndexingStatsScope stats)
@@ -361,7 +361,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Static
                             mapResult[field.Key] = blittableValue;
 
                             if (field.Value.IsGroupByField)
-                                _reduceKeyProcessor.Process(_parent._indexContext.Allocator, blittableValue);
+                                _reduceKeyProcessor.Process(_parent._indexContext, blittableValue);
                         }
 
                         if (_reduceKeyProcessor.ProcessedFields != _groupByFields.Count)

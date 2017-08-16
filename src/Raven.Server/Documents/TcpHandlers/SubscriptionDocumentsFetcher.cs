@@ -58,7 +58,7 @@ namespace Raven.Server.Documents.TcpHandlers
                 0,
                 _maxBatchSize))
             {
-                using (doc.Data)
+                try
                 {
                     if (ShouldSendDocument(subscription, patch, docsContext, doc, out BlittableJsonReaderObject transformResult, out var exception) == false)
                     {
@@ -75,7 +75,7 @@ namespace Raven.Server.Documents.TcpHandlers
                     }
                     else
                     {
-                        using (transformResult)
+                        try
                         {
                             if (transformResult == null)
                             {
@@ -92,7 +92,15 @@ namespace Raven.Server.Documents.TcpHandlers
                                 ChangeVector = doc.ChangeVector
                             }, null);
                         }
+                        finally
+                        {
+                            transformResult?.Dispose(docsContext);
+                        }
                     }
+                }
+                finally
+                {
+                    doc.Data?.Dispose(docsContext);
                 }
             }
         }
@@ -114,7 +122,8 @@ namespace Raven.Server.Documents.TcpHandlers
                 if (revisionTuple.previous != null)
                     dynamicValue["Previous"] = revisionTuple.previous.Data;
 
-                using (var revision = docsContext.ReadObject(dynamicValue, item.Id))
+                var revision = docsContext.ReadObject(dynamicValue, item.Id);
+                try
                 {
                     if (ShouldSendDocumentWithRevisions(subscription, patch, docsContext, item, revision, out var transformResult, out var exception) == false)
                     {
@@ -135,11 +144,11 @@ namespace Raven.Server.Documents.TcpHandlers
                     }
                     else
                     {
-                        using (transformResult)
+                        try
                         {
                             if (transformResult == null)
                             {
-                                yield return (revisionTuple.current,null);
+                                yield return (revisionTuple.current, null);
                                 continue;
                             }
 
@@ -150,9 +159,17 @@ namespace Raven.Server.Documents.TcpHandlers
                                 Data = transformResult,
                                 LowerId = item.LowerId,
                                 ChangeVector = item.ChangeVector
-                            },null);
+                            }, null);
+                        }
+                        finally
+                        {
+                            transformResult?.Dispose(docsContext);
                         }
                     }
+                }
+                finally
+                {
+                    revision.Dispose(docsContext);
                 }
             }
         }

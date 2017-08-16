@@ -49,9 +49,14 @@ namespace Raven.Server.Rachis
 
         private void Send(JsonOperationContext context, DynamicJsonValue msg)
         {
-            using (var msgJson = context.ReadObject(msg, "msg"))
+            var msgJson = context.ReadObject(msg, "msg");
+            try
             {
                 Send(context, msgJson);
+            }
+            finally
+            {
+                msgJson.Dispose(context);
             }
         }
 
@@ -266,13 +271,17 @@ namespace Raven.Server.Rachis
         {
             try
             {
-                using (
-                    var json = context.ParseToMemory(_stream, "rachis-item",
-                        BlittableJsonDocumentBuilder.UsageMode.None, _buffer))
+                var json = context.ParseToMemory(_stream, "rachis-item",
+                    BlittableJsonDocumentBuilder.UsageMode.None, _buffer);
+                try
                 {
                     json.BlittableValidation();
                     ValidateMessage(typeof(T).Name, json);
                     return JsonDeserializationRachis<T>.Deserialize(json);
+                }
+                finally
+                {
+                    json.Dispose(context);
                 }
             }
             catch (IOException e)
@@ -333,9 +342,9 @@ namespace Raven.Server.Rachis
 
         public RachisHello InitFollower(JsonOperationContext context)
         {
-            using (
-                var json = context.ParseToMemory(_stream, "rachis-initial-msg",
-                    BlittableJsonDocumentBuilder.UsageMode.None, _buffer))
+            var json = context.ParseToMemory(_stream, "rachis-initial-msg",
+                BlittableJsonDocumentBuilder.UsageMode.None, _buffer);
+            try
             {
                 json.BlittableValidation();
                 ValidateMessage(nameof(RachisHello), json);
@@ -344,6 +353,10 @@ namespace Raven.Server.Rachis
                 _destTag = rachisHello.DebugDestinationIdentifier ?? _destTag;
                 _log = LoggingSource.Instance.GetLogger<RemoteConnection>($"{_src} > {_destTag}");
                 return rachisHello;
+            }
+            finally
+            {
+                json.Dispose(context);
             }
         }
 

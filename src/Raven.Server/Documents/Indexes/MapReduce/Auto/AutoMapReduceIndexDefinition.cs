@@ -139,14 +139,19 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Auto
                 if (result == null)
                     return null;
 
-                using (var reader = context.ReadForDisk(result.Reader.AsStream(), string.Empty))
+                var reader = context.ReadForDisk(result.Reader.AsStream(), string.Empty);
+                try
                 {
-                    return LoadFromJson(reader);
+                    return LoadFromJson(context, reader);
+                }
+                finally
+                {
+                    reader.Dispose(context);
                 }
             }
         }
 
-        public static AutoMapReduceIndexDefinition LoadFromJson(BlittableJsonReaderObject reader)
+        public static AutoMapReduceIndexDefinition LoadFromJson(JsonOperationContext ctx,BlittableJsonReaderObject reader)
         {
             var lockMode = ReadLockMode(reader);
             var priority = ReadPriority(reader);
@@ -154,7 +159,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Auto
             if (reader.TryGet(nameof(Collections), out BlittableJsonReaderArray jsonArray) == false)
                 throw new InvalidOperationException("No persisted collections");
 
-            var collection = jsonArray.GetStringByIndex(0);
+            var collection = jsonArray.GetStringByIndex(ctx, 0);
 
             if (reader.TryGet(nameof(MapFields), out jsonArray) == false)
                 throw new InvalidOperationException("No persisted map fields");
@@ -163,7 +168,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Auto
 
             for (var i = 0; i < jsonArray.Length; i++)
             {
-                var json = jsonArray.GetByIndex<BlittableJsonReaderObject>(i);
+                var json = jsonArray.GetByIndex<BlittableJsonReaderObject>(ctx, i);
 
                 json.TryGet(nameof(IndexField.Name), out string name);
                 json.TryGet(nameof(IndexField.Aggregation), out int aggregationAsInt);
@@ -186,7 +191,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Auto
 
             for (var i = 0; i < jsonArray.Length; i++)
             {
-                var json = jsonArray.GetByIndex<BlittableJsonReaderObject>(i);
+                var json = jsonArray.GetByIndex<BlittableJsonReaderObject>(ctx, i);
 
                 json.TryGet(nameof(IndexField.Name), out string name);
                 json.TryGet(nameof(IndexField.Indexing), out string indexing);

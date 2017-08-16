@@ -186,7 +186,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce
 
                 foreach (var item in _aggregationBatch)
                 {
-                    item.Dispose();
+                    item.Dispose(indexContext);
                 }
 
                 var message = $"Failed to execute reduce function for reduce key '{reduceKeyHash}' on nested values of '{_indexDefinition.Name}' index.";
@@ -396,7 +396,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce
                 for (int i = 0; i < page.NumberOfEntries; i++)
                 {
                     var valueReader = TreeNodeHeader.Reader(lowLevelTransaction, page.GetNode(i));
-                    var reduceEntry = new BlittableJsonReaderObject(valueReader.Base, valueReader.Length, indexContext);
+                    var reduceEntry = new BlittableJsonReaderObject(valueReader.Base, valueReader.Length);
 
                     _aggregationBatch.Add(reduceEntry);
                 }
@@ -446,7 +446,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce
 
                         for (int j = 0; j < numberOfResults; j++)
                         {
-                            _aggregationBatch.Add(new BlittableJsonReaderObject(tvr.Read(3 + j, out size), size, indexContext));
+                            _aggregationBatch.Add(new BlittableJsonReaderObject(tvr.Read(3 + j, out size), size));
                         }
                     }
                 }

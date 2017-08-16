@@ -140,7 +140,7 @@ namespace Raven.Server.Utils
             }
         }
 
-        public static dynamic ToDynamicType(object value)
+        public static dynamic ToDynamicType(JsonOperationContext ctx,object value)
         {
             if (value == null)
                 return DynamicNullObject.Null;
@@ -150,14 +150,14 @@ namespace Raven.Server.Utils
             if (jsonObject != null)
             {
                 if (jsonObject.TryGetWithoutThrowingOnError("$values", out jsonArray))
-                    return new DynamicArray(jsonArray);
+                    return new DynamicArray(ctx,jsonArray);
 
-                return new DynamicBlittableJson(jsonObject);
+                return new DynamicBlittableJson(ctx, jsonObject);
             }
 
             jsonArray = value as BlittableJsonReaderArray;
             if (jsonArray != null)
-                return new DynamicArray(jsonArray);
+                return new DynamicArray(ctx, jsonArray);
 
             return ConvertForIndexing(value);
         }

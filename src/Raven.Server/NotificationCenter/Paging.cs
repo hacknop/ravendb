@@ -65,25 +65,26 @@ namespace Raven.Server.NotificationCenter
 
             while (_pagingQueue.TryDequeue(out (PagingOperationType Type, string Action, string QueryString, int NumberOfResults, int PageSize, TimeSpan Duration, DateTime Occurrence) tuple))
             {
+                using(_notificationsStorage.ContextPool.AllocateOperationContext(out JsonOperationContext ctx))
                 switch (tuple.Type)
                 {
                     case PagingOperationType.Documents:
                         if (documents == null)
-                            documents = GetPagingPerformanceHint(PagingDocumentsId, tuple.Type);
+                            documents = GetPagingPerformanceHint(ctx, PagingDocumentsId, tuple.Type);
 
                         ((PagingPerformanceDetails)documents.Details).Update(tuple.Action, tuple.QueryString, tuple.NumberOfResults, tuple.PageSize, tuple.Duration, tuple.Occurrence);
 
                         break;
                     case PagingOperationType.Queries:
                         if (queries == null)
-                            queries = GetPagingPerformanceHint(PagingQueriesId, tuple.Type);
+                            queries = GetPagingPerformanceHint(ctx, PagingQueriesId, tuple.Type);
 
                         ((PagingPerformanceDetails)queries.Details).Update(tuple.Action, tuple.QueryString, tuple.NumberOfResults, tuple.PageSize, tuple.Duration, tuple.Occurrence);
 
                         break;
                     case PagingOperationType.Revisions:
                         if (revisions == null)
-                            revisions = GetPagingPerformanceHint(PagingRevisionsId, tuple.Type);
+                            revisions = GetPagingPerformanceHint(ctx, PagingRevisionsId, tuple.Type);
 
                         ((PagingPerformanceDetails)revisions.Details).Update(tuple.Action, tuple.QueryString, tuple.NumberOfResults, tuple.PageSize, tuple.Duration, tuple.Occurrence);
                         break;
@@ -102,7 +103,7 @@ namespace Raven.Server.NotificationCenter
                 _notificationCenter.Add(revisions);
         }
 
-        private PerformanceHint GetPagingPerformanceHint(string id, PagingOperationType type)
+        private PerformanceHint GetPagingPerformanceHint(JsonOperationContext ctx,string id, PagingOperationType type)
         {
             using (_notificationsStorage.Read(id, out NotificationTableValue ntv))
             {
@@ -110,7 +111,7 @@ namespace Raven.Server.NotificationCenter
                 if (ntv == null || ntv.Json.TryGet(nameof(PerformanceHint.Details), out BlittableJsonReaderObject detailsJson) == false || detailsJson == null)
                     details = new PagingPerformanceDetails();
                 else
-                    details = (PagingPerformanceDetails)EntityToBlittable.ConvertToEntity(typeof(PagingPerformanceDetails), id, detailsJson, DocumentConventions.Default);
+                    details = (PagingPerformanceDetails)EntityToBlittable.ConvertToEntity(ctx, typeof(PagingPerformanceDetails), id, detailsJson, DocumentConventions.Default);
 
                 switch (type)
                 {

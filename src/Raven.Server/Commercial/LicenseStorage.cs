@@ -53,8 +53,9 @@ namespace Raven.Server.Commercial
                 var table = tx.InnerTransaction.OpenTable(_licenseStorageSchema, LicenseInfoSchema.LicenseTree);
 
                 var id = context.GetLazyString(FirstServerStartDateKey);
-                using (var json = context.ReadObject(firstServerStartDate, "DatabaseInfo",
-                    BlittableJsonDocumentBuilder.UsageMode.ToDisk))
+                var json = context.ReadObject(firstServerStartDate, "DatabaseInfo",
+                    BlittableJsonDocumentBuilder.UsageMode.ToDisk);
+                try
                 {
                     using (table.Allocate(out TableValueBuilder tvb))
                     {
@@ -63,6 +64,10 @@ namespace Raven.Server.Commercial
 
                         table.Set(tvb);
                     }
+                }
+                finally
+                {
+                    json.Dispose(context);
                 }
                 tx.Commit();
             }
@@ -83,12 +88,16 @@ namespace Raven.Server.Commercial
                         return null;
                 }
 
-                using (var firstServerStartDateJson = Read(context, ref infoTvr))
+                var firstServerStartDateJson = Read(context, ref infoTvr);
+                try
                 {
                     if (firstServerStartDateJson.TryGet(FirstServerStartDateKey, out DateTime result))
                         return result;
                 }
-
+                finally
+                {
+                    firstServerStartDateJson.Dispose(context);
+                }
                 return null;
             }
         }
@@ -97,7 +106,7 @@ namespace Raven.Server.Commercial
         private static unsafe BlittableJsonReaderObject Read(JsonOperationContext context, ref TableValueReader reader)
         {
             var ptr = reader.Read(LicenseInfoSchema.LicenseTable.JsonIndex, out int size);
-            return new BlittableJsonReaderObject(ptr, size, context);
+            return new BlittableJsonReaderObject(ptr, size);
         }
 
         public static class LicenseInfoSchema

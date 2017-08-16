@@ -26,11 +26,11 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Auto
             {
                 token.ThrowIfCancellationRequested();
 
-                using (obj)
+                try
                 {
                     var aggregatedResult = new Dictionary<string, PropertyResult>();
 
-                    foreach (var propertyName in obj.GetPropertyNames())
+                    foreach (var propertyName in obj.GetPropertyNames(indexContext))
                     {
                         if (_indexDefinition.TryGetField(propertyName, out IndexField indexField))
                         {
@@ -97,7 +97,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Auto
                     }
                     else
                     {
-                        reduceKey.Dispose();
+                        reduceKey.Dispose(indexContext);
 
                         foreach (var propertyResult in existingAggregate)
                         {
@@ -105,13 +105,17 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Auto
                         }
                     }
                 }
+                finally
+                {
+                    obj.Dispose(indexContext);
+                }
             }
 
             var resultObjects = new List<Document>(aggregatedResultsByReduceKey.Count);
 
             foreach (var aggregationResult in aggregatedResultsByReduceKey)
             {
-                aggregationResult.Key.Dispose();
+                aggregationResult.Key.Dispose(indexContext);
 
                 var djv = new DynamicJsonValue();
 
@@ -123,7 +127,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Auto
                 resultObjects.Add(new Document { Data = indexContext.ReadObject(djv, "map/reduce") });
             }
 
-            return new AggregatedDocuments(resultObjects);
+            return new AggregatedDocuments(indexContext, resultObjects);
         }
 
         private class PropertyResult

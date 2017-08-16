@@ -33,12 +33,14 @@ namespace Raven.Server.Smuggler.Documents
 
             public BlittableJsonReaderObject Data;
 
+            public JsonOperationContext Context;
+
             public void Dispose()
             {
                 Base64HashDispose.Dispose();
                 TagDispose.Dispose();
                 Stream.Dispose();
-                Data.Dispose();
+                Data.Dispose(Context);
             }
         }
     }

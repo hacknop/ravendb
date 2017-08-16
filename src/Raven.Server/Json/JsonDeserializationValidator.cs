@@ -24,7 +24,7 @@ namespace Raven.Server.Json
                 if (typeInfo.IsSubclassOf(typeof(CommandBase)) == false)
                     continue;
 
-                if (JsonDeserializationCluster.Commands.TryGetValue(type.Name, out Func<BlittableJsonReaderObject, CommandBase> _))
+                if (JsonDeserializationCluster.Commands.TryGetValue(type.Name, out Func<JsonOperationContext,BlittableJsonReaderObject, CommandBase> _))
                     continue;
 
                 exceptions.Add(new InvalidOperationException($"Missing deserialization routine in '{nameof(JsonDeserializationCluster)}.{nameof(JsonDeserializationCluster.Commands)}' for '{type.Name}'."));

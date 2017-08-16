@@ -17,7 +17,7 @@ namespace Raven.Server.Documents.Handlers.Admin
             using (ServerStore.ContextPool.AllocateOperationContext(out TransactionOperationContext context))
             {
                 var clientConfigurationJson = context.ReadForDisk(RequestBodyStream(), Constants.Configuration.ClientId);
-                var clientConfiguration = JsonDeserializationServer.ClientConfiguration(clientConfigurationJson);
+                var clientConfiguration = JsonDeserializationServer.ClientConfiguration(context, clientConfigurationJson);
 
                 using (context.OpenReadTransaction())
                 {

@@ -47,8 +47,8 @@ namespace Raven.Server.Documents
 #if DEBUG
             var documentDebugHash = document.DebugHash;
             document.BlittableValidation();
-            BlittableJsonReaderObject.AssertNoModifications(document, id, assertChildren: true);
-            AssertMetadataWasFiltered(document);
+            BlittableJsonReaderObject.AssertNoModifications(context, document, id, assertChildren: true);
+            AssertMetadataWasFiltered(context, document);
 #endif
 
             var collectionName = _documentsStorage.ExtractCollectionName(context, id, document);
@@ -85,7 +85,7 @@ namespace Raven.Server.Documents
                             ThrowConcurrentException(id, expectedChangeVector, oldChangeVector);
                     }
 
-                    oldDoc = new BlittableJsonReaderObject(oldValue.Read((int)DocumentsTable.Data, out int oldSize), oldSize, context);
+                    oldDoc = new BlittableJsonReaderObject(oldValue.Read((int)DocumentsTable.Data, out int oldSize), oldSize);
                     var oldCollectionName = _documentsStorage.ExtractCollectionName(context, id, oldDoc);
                     if (oldCollectionName != collectionName)
                         ThrowInvalidCollectionNameChange(id, oldCollectionName, collectionName);
@@ -122,8 +122,8 @@ namespace Raven.Server.Documents
 #if DEBUG
                         documentDebugHash = document.DebugHash;
                         document.BlittableValidation();
-                        BlittableJsonReaderObject.AssertNoModifications(document, id, assertChildren: true);
-                        AssertMetadataWasFiltered(document);
+                        BlittableJsonReaderObject.AssertNoModifications(context, document, id, assertChildren: true);
+                        AssertMetadataWasFiltered(context, document);
                         AttachmentsStorage.AssertAttachments(document, flags);
 #endif
                     }
@@ -187,8 +187,8 @@ namespace Raven.Server.Documents
                                                    "this is likely because you are trying to save a document that is already stored and was moved");
                 }
                 document.BlittableValidation();
-                BlittableJsonReaderObject.AssertNoModifications(document, id, assertChildren: true);
-                AssertMetadataWasFiltered(document);
+                BlittableJsonReaderObject.AssertNoModifications(context, document, id, assertChildren: true);
+                AssertMetadataWasFiltered(context, document);
                 AttachmentsStorage.AssertAttachments(document, flags);
 #endif
                 return new PutOperationResults
@@ -431,12 +431,12 @@ namespace Raven.Server.Documents
         }
 
         [Conditional("DEBUG")]
-        public static void AssertMetadataWasFiltered(BlittableJsonReaderObject data)
+        public static void AssertMetadataWasFiltered(JsonOperationContext ctx, BlittableJsonReaderObject data)
         {
             if (data.TryGet(Constants.Documents.Metadata.Key, out BlittableJsonReaderObject metadata) == false)
                 return;
 
-            var names = metadata.GetPropertyNames();
+            var names = metadata.GetPropertyNames(ctx);
             if (names.Contains(Constants.Documents.Metadata.Id, StringComparer.OrdinalIgnoreCase) ||
                 names.Contains(Constants.Documents.Metadata.LastModified, StringComparer.OrdinalIgnoreCase) ||
                 names.Contains(Constants.Documents.Metadata.IndexScore, StringComparer.OrdinalIgnoreCase) ||

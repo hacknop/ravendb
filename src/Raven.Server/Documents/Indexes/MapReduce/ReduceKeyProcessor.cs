@@ -2,6 +2,7 @@
 using System.Runtime.CompilerServices;
 using Raven.Server.Documents.Indexes.Static;
 using Raven.Server.ServerWide;
+using Raven.Server.ServerWide.Context;
 using Sparrow;
 using Sparrow.Binary;
 using Sparrow.Json;
@@ -77,7 +78,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce
             throw new InvalidOperationException($"It processed {_processedFields} while expected to get {_numberOfReduceFields}");
         }
 
-        public void Process(ByteStringContext context,object value, bool internalCall = false)
+        public void Process(TransactionOperationContext ctx,object value, bool internalCall = false)
         {
             if (internalCall == false)
                 _processedFields++;
@@ -104,7 +105,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce
             var s = value as string;
             if (s != null)
             {
-                using (Slice.From(context, s, out Slice str))
+                using (Slice.From(ctx.Allocator, s, out Slice str))
                 {
                     switch (_mode)
                     {
@@ -252,9 +253,9 @@ namespace Raven.Server.Documents.Indexes.MapReduce
                 for (int i = 0; i < json.Count; i++)
                 {
                     // this call ensures properties to be returned in the same order, regardless their storing order
-                    json.GetPropertyByIndex(i, ref prop);
+                    json.GetPropertyByIndex(ctx,i, ref prop);
 
-                    Process(context, prop.Value, true);
+                    Process(ctx, prop.Value, true);
                 }
 
                 return;
@@ -271,7 +272,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce
 
                 foreach (var item in array)
                 {
-                    Process(context, item, true);
+                    Process(ctx, item, true);
                 }
 
                 return;

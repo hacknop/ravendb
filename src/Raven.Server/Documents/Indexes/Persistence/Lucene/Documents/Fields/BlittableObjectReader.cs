@@ -20,26 +20,26 @@ namespace Raven.Server.Documents.Indexes.Persistence.Lucene.Documents.Fields
             _reader = new StreamReader(_ms, Encodings.Utf8, true, 1024, leaveOpen: true);
         }
 
-        public TextReader GetTextReaderFor(BlittableJsonReaderObject value)
+        public TextReader GetTextReaderFor(JsonOperationContext ctx,BlittableJsonReaderObject value)
         {
             _reader.DiscardBufferedData();
 
             var ms = _reader.BaseStream;
 
             ms.Position = 0;
-            value.WriteJsonTo(ms);
+            ctx.Write(ms, value);
             ms.SetLength(ms.Position);
             ms.Position = 0;
 
             return _reader;
         }
 
-        public string GetStringFor(BlittableJsonReaderObject value)
+        public string GetStringFor(JsonOperationContext ctx, BlittableJsonReaderObject value)
         {
             if (value == null)
                 return null;
 
-            GetTextReaderFor(value);
+            GetTextReaderFor(ctx, value);
 
             if (_readBuffer == null)
                 _readBuffer = new char[128];

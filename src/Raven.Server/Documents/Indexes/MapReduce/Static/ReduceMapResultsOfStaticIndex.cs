@@ -25,7 +25,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Static
         
         protected override AggregationResult AggregateOn(List<BlittableJsonReaderObject> aggregationBatch, TransactionOperationContext indexContext, CancellationToken token)
         {
-            _blittableToDynamicWrapper.InitializeForEnumeration(aggregationBatch);
+            _blittableToDynamicWrapper.InitializeForEnumeration(indexContext, aggregationBatch);
             
             var resultObjects = new List<object>();
 
@@ -45,10 +45,9 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Static
         private class DynamicIterationOfAggregationBatchWrapper : IEnumerable<DynamicBlittableJson>
         {
             private readonly Enumerator _enumerator = new Enumerator();
-
-            public void InitializeForEnumeration(List<BlittableJsonReaderObject> aggregationBatch)
+            public void InitializeForEnumeration(JsonOperationContext ctx,List<BlittableJsonReaderObject> aggregationBatch)
             {
-                _enumerator.Initialize(aggregationBatch.GetEnumerator());
+                _enumerator.Initialize(ctx, aggregationBatch.GetEnumerator());
             }
 
             public IEnumerator<DynamicBlittableJson> GetEnumerator()
@@ -64,10 +63,11 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Static
             private class Enumerator : IEnumerator<DynamicBlittableJson>
             {
                 private IEnumerator<BlittableJsonReaderObject> _items;
-
-                public void Initialize(IEnumerator<BlittableJsonReaderObject> items)
+                private JsonOperationContext _ctx;
+                public void Initialize(JsonOperationContext ctx, IEnumerator<BlittableJsonReaderObject> items)
                 {
                     _items = items;
+                    _ctx = ctx;
                 }
 
                 public bool MoveNext()
@@ -75,7 +75,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Static
                     if (_items.MoveNext() == false)
                         return false;
 
-                    Current = new DynamicBlittableJson(_items.Current); // we have to create new instance to properly GroupBy
+                    Current = new DynamicBlittableJson(_ctx, _items.Current); // we have to create new instance to properly GroupBy
 
                     return true;
                 }

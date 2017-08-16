@@ -290,7 +290,7 @@ namespace Raven.Server.Documents
                 // can cause corruption if we read from the old value (which we just deleted)
                 Memory.Copy(copyOfDoc.Address, tvr.Pointer, tvr.Size);
                 var copyTvr = new TableValueReader(copyOfDoc.Address, tvr.Size);
-                var data = new BlittableJsonReaderObject(copyTvr.Read((int)DocumentsTable.Data, out int size), size, context);
+                var data = new BlittableJsonReaderObject(copyTvr.Read((int)DocumentsTable.Data, out int size), size);
 
                 var attachments = GetAttachmentsMetadataForDocument(context, lowerDocumentId);
 
@@ -737,7 +737,7 @@ namespace Raven.Server.Documents
                 attachments = null;
             }
 
-            foreach (BlittableJsonReaderObject conflictAttachment in conflictAttachments)
+            foreach (BlittableJsonReaderObject conflictAttachment in conflictAttachments.GetItems(context))
             {
                 if (conflictAttachment.TryGet(nameof(AttachmentName.Name), out LazyStringValue conflictName) == false ||
                     conflictAttachment.TryGet(nameof(AttachmentName.ContentType), out LazyStringValue conflictContentType) == false ||
@@ -750,7 +750,7 @@ namespace Raven.Server.Documents
                 var attachmentFoundInResolveDocument = false;
                 if (attachments != null)
                 {
-                    foreach (BlittableJsonReaderObject attachment in attachments)
+                    foreach (BlittableJsonReaderObject attachment in attachments.GetItems(context))
                     {
                         if (attachment.TryGet(nameof(AttachmentName.Name), out LazyStringValue name) == false ||
                             attachment.TryGet(nameof(AttachmentName.ContentType), out LazyStringValue contentType) == false ||

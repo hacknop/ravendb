@@ -36,9 +36,9 @@ namespace Raven.Server.Documents.Handlers
                 if (input.TryGet("Indexes", out BlittableJsonReaderArray indexes) == false)
                     ThrowRequiredPropertyNameInRequest("Indexes");
 
-                foreach (var indexToAdd in indexes)
+                foreach (var indexToAdd in indexes.GetItems(context))
                 {
-                    var indexDefinition = JsonDeserializationServer.IndexDefinition((BlittableJsonReaderObject)indexToAdd);
+                    var indexDefinition = JsonDeserializationServer.IndexDefinition(context, (BlittableJsonReaderObject)indexToAdd);
 
                     if (indexDefinition.Maps == null || indexDefinition.Maps.Count == 0)
                         throw new ArgumentException("Index must have a 'Maps' fields");
@@ -142,23 +142,29 @@ namespace Raven.Server.Documents.Handlers
         public Task HasChanged()
         {
             using (Database.DocumentsStorage.ContextPool.AllocateOperationContext(out JsonOperationContext context))
-            using (var json = context.ReadForMemory(RequestBodyStream(), "index/definition"))
             {
-                var indexDefinition = JsonDeserializationServer.IndexDefinition(json);
-
-                if (indexDefinition?.Name == null || indexDefinition.Maps.Count == 0)
-                    throw new BadRequestException("Index definition must contain name and at least one map.");
-
-                var changed = Database.IndexStore.HasChanged(indexDefinition);
-
-                using (var writer = new BlittableJsonTextWriter(context, ResponseBodyStream()))
+                var json = context.ReadForMemory(RequestBodyStream(), "index/definition");
+                try
                 {
-                    writer.WriteStartObject();
-                    writer.WritePropertyName("Changed");
-                    writer.WriteBool(changed);
-                    writer.WriteEndObject();
+                    var indexDefinition = JsonDeserializationServer.IndexDefinition(context, json);
+
+                    if (indexDefinition?.Name == null || indexDefinition.Maps.Count == 0)
+                        throw new BadRequestException("Index definition must contain name and at least one map.");
+
+                    var changed = Database.IndexStore.HasChanged(indexDefinition);
+
+                    using (var writer = new BlittableJsonTextWriter(context, ResponseBodyStream()))
+                    {
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("Changed");
+                        writer.WriteBool(changed);
+                        writer.WriteEndObject();
+                    }
                 }
-            }
+                finally
+                {
+                    json.Dispose(context);
+                }}
 
             return NoContent();
         }

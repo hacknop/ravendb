@@ -36,23 +36,23 @@ namespace Raven.Server.Smuggler.Documents
 
             using (var scope = new OperationScope())
             {
-                var jsObject = scope.ToJsObject(_engine, document);
+                var jsObject = scope.ToJsObject(context, _engine, document);
                 var jsObjectTransformed = _engine.Invoke("Transform", jsObject);
 
                 if (jsObjectTransformed.IsObject() == false)
                 {
-                    document.Data.Dispose();
+                    document.Data.Dispose(context);
                     return null;
                 }
 
                 var newDocument = context.ReadObject(scope.ToBlittable(jsObjectTransformed.AsObject()), document.Id);
                 if (newDocument.Equals(document.Data))
                 {
-                    newDocument.Dispose();
+                    newDocument.Dispose(context);
                     return document;
                 }
 
-                document.Data.Dispose();
+                document.Data.Dispose(context);
 
                 return new Document
                 {
@@ -71,7 +71,7 @@ namespace Raven.Server.Smuggler.Documents
             {
             }
 
-            public override JsValue LoadDocument(string documentId, Engine engine, ref int totalStatements)
+            public override JsValue LoadDocument(JsonOperationContext ctx, string documentId, Engine engine, ref int totalStatements)
             {
                 throw new NotSupportedException("LoadDocument is not supported.");
             }

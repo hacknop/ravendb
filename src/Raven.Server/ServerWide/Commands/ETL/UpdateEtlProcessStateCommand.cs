@@ -43,7 +43,7 @@ namespace Raven.Server.ServerWide.Commands.ETL
             EtlProcessState state;
 
             if (existingValue != null)
-                state = JsonDeserializationClient.EtlProcessState(existingValue);
+                state = JsonDeserializationClient.EtlProcessState(context, existingValue);
             else
             {
                 state = new EtlProcessState

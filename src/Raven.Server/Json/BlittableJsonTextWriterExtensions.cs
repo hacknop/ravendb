@@ -1000,12 +1000,16 @@ namespace Raven.Server.Json
                     continue;
                 }
 
-                using (document.Data)
+                try
                 {
                     if (metadataOnly == false)
                         writer.WriteDocument(context, document);
                     else
                         writer.WriteDocumentMetadata(context, document);
+                }
+                finally
+                {
+                    document.Data.Dispose(context);
                 }
             }
 
@@ -1030,9 +1034,13 @@ namespace Raven.Server.Json
                     writer.WriteComma();
                 first = false;
 
-                using (o)
+                try
                 {
                     writer.WriteObject(o);
+                }
+                finally
+                {
+                    o?.Dispose(context);
                 }
             }
 
@@ -1050,12 +1058,12 @@ namespace Raven.Server.Json
 
             writer.WriteStartObject();
             document.Data.TryGet(Constants.Documents.Metadata.Key, out BlittableJsonReaderObject metadata);
-            WriteMetadata(writer, document, metadata);
+            WriteMetadata(writer, context, document, metadata);
 
             writer.WriteEndObject();
         }
 
-        public static void WriteMetadata(this BlittableJsonTextWriter writer, Document document, BlittableJsonReaderObject metadata)
+        public static void WriteMetadata(this BlittableJsonTextWriter writer, JsonOperationContext ctx, Document document, BlittableJsonReaderObject metadata)
         {
             writer.WritePropertyName(Constants.Documents.Metadata.Key);
             writer.WriteStartObject();
@@ -1072,7 +1080,7 @@ namespace Raven.Server.Json
                         writer.WriteComma();
                     }
                     first = false;
-                    metadata.GetPropertyByIndex(i, ref prop);
+                    metadata.GetPropertyByIndex(ctx, i, ref prop);
                     writer.WritePropertyName(prop.Name);
                     writer.WriteValue(prop.Token & BlittableJsonReaderBase.TypesMask, prop.Value);
                 }
@@ -1136,7 +1144,7 @@ namespace Raven.Server.Json
 
             for (var i = 0; i < size; i++)
             {
-                document.Data.GetPropertyByIndex(_buffers.Properties[i], ref prop);
+                document.Data.GetPropertyByIndex(context, _buffers.Properties[i], ref prop);
                 if (metadataField.Equals(prop.Name))
                 {
                     metadata = (BlittableJsonReaderObject)prop.Value;
@@ -1153,7 +1161,7 @@ namespace Raven.Server.Json
 
             if (first == false)
                 writer.WriteComma();
-            WriteMetadata(writer, document, metadata);
+            WriteMetadata(writer, context, document, metadata);
         }
 
         public static void WriteDocumentPropertiesWithoutMetdata(this BlittableJsonTextWriter writer, JsonOperationContext context, Document document)
@@ -1168,7 +1176,7 @@ namespace Raven.Server.Json
 
             for (var i = 0; i < size; i++)
             {
-                document.Data.GetPropertyByIndex(_buffers.Properties[i], ref prop);
+                document.Data.GetPropertyByIndex(context, _buffers.Properties[i], ref prop);
                 if (first == false)
                 {
                     writer.WriteComma();

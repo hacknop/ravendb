@@ -50,7 +50,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Static
         {
             for (int i = _jsons.Count - 1; i >= 0; i--)
             {
-                _jsons[i].Dispose();
+                _jsons[i].Dispose(_indexContext);
             }
             _jsons.Clear();
         }

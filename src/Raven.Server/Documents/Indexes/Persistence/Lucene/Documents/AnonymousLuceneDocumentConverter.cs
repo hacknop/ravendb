@@ -24,7 +24,7 @@ namespace Raven.Server.Documents.Indexes.Persistence.Lucene.Documents
             int newFields = 0;
             if (key != null)
             {
-                instance.Add(GetOrCreateKeyField(key));
+                instance.Add(GetOrCreateKeyField(indexContext, key));
                 newFields++;
             }
 

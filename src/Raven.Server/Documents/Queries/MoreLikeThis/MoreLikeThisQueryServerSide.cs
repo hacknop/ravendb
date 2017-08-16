@@ -15,9 +15,9 @@ namespace Raven.Server.Documents.Queries.MoreLikeThis
         [JsonIgnore]
         public QueryMetadata Metadata { get; private set; }
 
-        public static MoreLikeThisQueryServerSide Create(BlittableJsonReaderObject json)
+        public static MoreLikeThisQueryServerSide Create(JsonOperationContext ctx, BlittableJsonReaderObject json)
         {
-            var result = JsonDeserializationServer.MoreLikeThisQuery(json);
+            var result = JsonDeserializationServer.MoreLikeThisQuery(ctx,json);
 
             if (result.PageSize == 0 && json.TryGet(nameof(PageSize), out int _) == false)
                 result.PageSize = int.MaxValue;

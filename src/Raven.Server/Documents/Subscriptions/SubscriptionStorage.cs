@@ -179,7 +179,7 @@ namespace Raven.Server.Documents.Subscriptions
             foreach (var keyValue in ClusterStateMachine.ReadValuesStartingWith(serverStoreContext,
                 SubscriptionState.SubscriptionPrefix(_db.Name)))
             {
-                var subscriptionState = JsonDeserializationClient.SubscriptionState(keyValue.Value);
+                var subscriptionState = JsonDeserializationClient.SubscriptionState(serverStoreContext, keyValue.Value);
                 var subscriptionGeneralData = new SubscriptionGeneralDataAndStats(subscriptionState);
                 GetSubscriptionInternal(subscriptionGeneralData, history);
                 yield return subscriptionGeneralData;
@@ -241,7 +241,7 @@ namespace Raven.Server.Documents.Subscriptions
             if (subscriptionBlittable == null)
                 throw new SubscriptionDoesNotExistException($"Subscripiton with name {name} was not found in server store");
 
-            var subscriptionState = JsonDeserializationClient.SubscriptionState(subscriptionBlittable);
+            var subscriptionState = JsonDeserializationClient.SubscriptionState(context, subscriptionBlittable);
             var subscriptionJsonValue = new SubscriptionGeneralDataAndStats(subscriptionState);
             return subscriptionJsonValue;
         }
@@ -359,7 +359,7 @@ namespace Raven.Server.Documents.Subscriptions
                         DropSubscriptionConnection(subscriptionStateKvp.Key, new SubscriptionDoesNotExistException($"The subscription {subscriptionName} had been deleted"));
                         continue;
                     }
-                    var subscriptionState = JsonDeserializationClient.SubscriptionState(subscriptionBlittable);
+                    var subscriptionState = JsonDeserializationClient.SubscriptionState(context, subscriptionBlittable);
 
                     if (subscriptionState.Disabled)
                     {

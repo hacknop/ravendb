@@ -77,19 +77,24 @@ namespace Raven.Server.Documents.Indexes.Auto
                 if (result == null)
                     return null;
 
-                using (var reader = context.ReadForDisk(result.Reader.AsStream(), string.Empty))
+                var reader = context.ReadForDisk(result.Reader.AsStream(), string.Empty);
+                try
                 {
-                    return LoadFromJson(reader);
+                    return LoadFromJson(context, reader);
+                }
+                finally
+                {
+                    reader.Dispose(context);
                 }
             }
         }
 
-        public static AutoMapIndexDefinition LoadFromJson(BlittableJsonReaderObject reader)
+        public static AutoMapIndexDefinition LoadFromJson(JsonOperationContext ctx, BlittableJsonReaderObject reader)
         {
             var lockMode = ReadLockMode(reader);
             var priority = ReadPriority(reader);
-            var collections = ReadCollections(reader);
-            var fields = ReadMapFields(reader);
+            var collections = ReadCollections(ctx,reader);
+            var fields = ReadMapFields(ctx, reader);
 
             return new AutoMapIndexDefinition(collections[0], fields)
             {

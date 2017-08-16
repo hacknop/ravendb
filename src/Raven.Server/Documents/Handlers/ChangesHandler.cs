@@ -136,7 +136,8 @@ namespace Raven.Server.Documents.Handlers
 
                                 builder.FinalizeDocument();
 
-                                using (var reader = builder.CreateReader())
+                                var reader = builder.CreateReader();
+                                try
                                 {
                                     if (reader.TryGet("Command", out string command) == false)
                                         throw new ArgumentNullException(nameof(command), "Command argument is mandatory");
@@ -148,6 +149,10 @@ namespace Raven.Server.Documents.Handlers
                                     {
                                         connection.Confirm(commandId);
                                     }
+                                }
+                                finally
+                                {
+                                    reader.Dispose(context);
                                 }
                             }
                         }

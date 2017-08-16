@@ -810,13 +810,13 @@ namespace Raven.Server.ServerWide
 
         public Task<(long Etag, object Result)> ModifyDatabaseExpiration(TransactionOperationContext context, string name, BlittableJsonReaderObject configurationJson)
         {
-            var editExpiration = new EditExpirationCommand(JsonDeserializationCluster.ExpirationConfiguration(configurationJson), name);
+            var editExpiration = new EditExpirationCommand(JsonDeserializationCluster.ExpirationConfiguration(context, configurationJson), name);
             return SendToLeaderAsync(editExpiration);
         }
 
         public async Task<(long, object)> ModifyPeriodicBackup(TransactionOperationContext context, string name, BlittableJsonReaderObject configurationJson)
         {
-            var modifyPeriodicBackup = new UpdatePeriodicBackupCommand(JsonDeserializationCluster.PeriodicBackupConfiguration(configurationJson), name);
+            var modifyPeriodicBackup = new UpdatePeriodicBackupCommand(JsonDeserializationCluster.PeriodicBackupConfiguration(context, configurationJson), name);
             return await SendToLeaderAsync(modifyPeriodicBackup);
         }
 
@@ -827,10 +827,10 @@ namespace Raven.Server.ServerWide
             switch (GetEtlType(etlConfiguration))
             {
                 case EtlType.Raven:
-                    command = new AddRavenEtlCommand(JsonDeserializationCluster.RavenEtlConfiguration(etlConfiguration), databaseName);
+                    command = new AddRavenEtlCommand(JsonDeserializationCluster.RavenEtlConfiguration(context, etlConfiguration), databaseName);
                     break;
                 case EtlType.Sql:
-                    command = new AddSqlEtlCommand(JsonDeserializationCluster.SqlEtlConfiguration(etlConfiguration), databaseName);
+                    command = new AddSqlEtlCommand(JsonDeserializationCluster.SqlEtlConfiguration(context, etlConfiguration), databaseName);
                     break;
                 default:
                     throw new NotSupportedException($"Unknown ETL configuration type. Configuration: {etlConfiguration}");
@@ -846,10 +846,10 @@ namespace Raven.Server.ServerWide
             switch (GetEtlType(etlConfiguration))
             {
                 case EtlType.Raven:
-                    command = new UpdateRavenEtlCommand(id, JsonDeserializationCluster.RavenEtlConfiguration(etlConfiguration), databaseName);
+                    command = new UpdateRavenEtlCommand(id, JsonDeserializationCluster.RavenEtlConfiguration(context, etlConfiguration), databaseName);
                     break;
                 case EtlType.Sql:
-                    command = new UpdateSqlEtlCommand(id, JsonDeserializationCluster.SqlEtlConfiguration(etlConfiguration), databaseName);
+                    command = new UpdateSqlEtlCommand(id, JsonDeserializationCluster.SqlEtlConfiguration(context, etlConfiguration), databaseName);
                     break;
                 default:
                     throw new NotSupportedException($"Unknown ETL configuration type. Configuration: {etlConfiguration}");
@@ -871,7 +871,7 @@ namespace Raven.Server.ServerWide
 
         public Task<(long, object)> ModifyDatabaseRevisions(JsonOperationContext context, string name, BlittableJsonReaderObject configurationJson)
         {
-            var editRevisions = new EditRevisionsConfigurationCommand(JsonDeserializationCluster.RevisionsConfiguration(configurationJson), name);
+            var editRevisions = new EditRevisionsConfigurationCommand(JsonDeserializationCluster.RevisionsConfiguration(context, configurationJson), name);
             return SendToLeaderAsync(editRevisions);
         }
 
@@ -888,10 +888,10 @@ namespace Raven.Server.ServerWide
             switch (connectionStringType)
             {
                 case ConnectionStringType.Raven:
-                    command = new PutRavenConnectionString(JsonDeserializationCluster.RavenConnectionString(connectionString), databaseName);
+                    command = new PutRavenConnectionString(JsonDeserializationCluster.RavenConnectionString(context, connectionString), databaseName);
                     break;
                 case ConnectionStringType.Sql:
-                    command = new PutSqlConnectionString(JsonDeserializationCluster.SqlConnectionString(connectionString), databaseName);
+                    command = new PutSqlConnectionString(JsonDeserializationCluster.SqlConnectionString(context, connectionString), databaseName);
                     break;
                 default:
                     throw new NotSupportedException($"Unknown connection string type: {connectionStringType}");
@@ -1114,10 +1114,15 @@ namespace Raven.Server.ServerWide
                         foreach (var localCertKey in Cluster.GetCertificateKeysFromLocalState(ctx))
                         {
                             // If there are trusted certificates in the local state, we will register them in the cluster now
-                            using (var localCertificate = Cluster.GetLocalState(ctx, localCertKey))
+                            var localCertificate = Cluster.GetLocalState(ctx, localCertKey);
+                            try
                             {
-                                var certificateDefinition = JsonDeserializationServer.CertificateDefinition(localCertificate);
+                                var certificateDefinition = JsonDeserializationServer.CertificateDefinition(ctx, localCertificate);
                                 PutValueInClusterAsync(new PutCertificateCommand(localCertKey, certificateDefinition));
+                            }
+                            finally
+                            {
+                                localCertificate.Dispose(ctx);
                             }
                         }
                     }
@@ -1176,7 +1181,7 @@ namespace Raven.Server.ServerWide
                 if (licenseBlittable == null)
                     return null;
 
-                return JsonDeserializationServer.License(licenseBlittable);
+                return JsonDeserializationServer.License(context, licenseBlittable);
             }
         }
 
@@ -1291,7 +1296,7 @@ namespace Raven.Server.ServerWide
                 if (clusterTopology.Members.TryGetValue(engineLeaderTag, out string leaderUrl) == false)
                     throw new InvalidOperationException("Leader " + engineLeaderTag + " was not found in the topology members");
 
-                var command = new PutRaftCommand(cmdJson);
+                var command = new PutRaftCommand(context, cmdJson);
 
                 if (_clusterRequestExecutor == null
                     || _clusterRequestExecutor.Url.Equals(leaderUrl, StringComparison.OrdinalIgnoreCase) == false)
@@ -1309,11 +1314,13 @@ namespace Raven.Server.ServerWide
 
         private class PutRaftCommand : RavenCommand<PutRaftCommandResult>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly BlittableJsonReaderObject _command;
             public override bool IsReadRequest => false;
 
-            public PutRaftCommand(BlittableJsonReaderObject command)
+            public PutRaftCommand(JsonOperationContext ctx, BlittableJsonReaderObject command)
             {
+                _ctx = ctx;
                 _command = command;
             }
 
@@ -1338,7 +1345,7 @@ namespace Raven.Server.ServerWide
 
             public override void SetResponse(BlittableJsonReaderObject response, bool fromCache)
             {
-                Result = JsonDeserializationCluster.PutRaftCommandResult(response);
+                Result = JsonDeserializationCluster.PutRaftCommandResult(_ctx, response);
             }
         }
 

@@ -294,7 +294,7 @@ namespace Raven.Server.Documents.Indexes.Debugging
                         var entry = new MapResultInLeaf();
 
                         var valueReader = TreeNodeHeader.Reader(tx, page.GetNode(i));
-                        entry.Data = new BlittableJsonReaderObject(valueReader.Base, valueReader.Length, context);
+                        entry.Data = new BlittableJsonReaderObject(valueReader.Base, valueReader.Length);
 
                         using (page.GetNodeKey(tx, i, out Slice s))
                         {
@@ -334,7 +334,7 @@ namespace Raven.Server.Documents.Indexes.Debugging
             else
                 throw new InvalidOperationException("Invalid map reduce index definition: " + indexDefinition.GetType());
 
-            foreach (var prop in reduceEntry.GetPropertyNames())
+            foreach (var prop in reduceEntry.GetPropertyNames(context))
             {
                 if (groupByFields.Contains(prop))
                     continue;
@@ -358,7 +358,7 @@ namespace Raven.Server.Documents.Indexes.Debugging
             {
                 table.ReadByKey(pageNumberSlice, out TableValueReader tvr);
 
-                return new BlittableJsonReaderObject(tvr.Read(3, out int size), size, context);
+                return new BlittableJsonReaderObject(tvr.Read(3, out int size), size);
             }
         }
 

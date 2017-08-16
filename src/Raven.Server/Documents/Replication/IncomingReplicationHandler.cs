@@ -461,18 +461,25 @@ namespace Raven.Server.Documents.Replication
                     task = _database.TxMerger.Enqueue(replicationCommand).AsTask();
 
                     using (var writer = new BlittableJsonTextWriter(documentsContext, _connectionOptions.Stream))
-                    using (var msg = documentsContext.ReadObject(new DynamicJsonValue
                     {
-                        [nameof(ReplicationMessageReply.MessageType)] = "Processing"
-                    }, "heartbeat message"))
-                    {
-                        while (task.Wait(Math.Min(3000, (int)(_database.Configuration.Replication.ActiveConnectionTimeout.AsTimeSpan.TotalMilliseconds * 2 / 3))) == false)
+                        var msg = documentsContext.ReadObject(new DynamicJsonValue
                         {
-                            // send heartbeats while batch is processed in TxMerger. We wait until merger finishes with this command without timeouts
-                            documentsContext.Write(writer, msg);
-                            writer.Flush();
+                            [nameof(ReplicationMessageReply.MessageType)] = "Processing"
+                        }, "heartbeat message");
+                        try
+                        {
+                            while (task.Wait(Math.Min(3000, (int)(_database.Configuration.Replication.ActiveConnectionTimeout.AsTimeSpan.TotalMilliseconds * 2 / 3))) == false)
+                            {
+                                // send heartbeats while batch is processed in TxMerger. We wait until merger finishes with this command without timeouts
+                                documentsContext.Write(writer, msg);
+                                writer.Flush();
+                            }
+                            task = null;
                         }
-                        task = null;
+                        finally
+                        {
+                            msg.Dispose(documentsContext);
+                        }
                     }
                 }
 
@@ -948,7 +955,7 @@ namespace Raven.Server.Documents.Replication
 
                                         //if something throws at this point, this means something is really wrong and we should stop receiving documents.
                                         //the other side will receive negative ack and will retry sending again.
-                                        document = new BlittableJsonReaderObject(_buffer + item.Position, item.DocumentSize, context);
+                                        document = new BlittableJsonReaderObject(_buffer + item.Position, item.DocumentSize);
                                         document.BlittableValidation();
                                     }
 
@@ -1036,7 +1043,7 @@ namespace Raven.Server.Documents.Replication
                                 }
                                 finally
                                 {
-                                    document?.Dispose();
+                                    document?.Dispose(context);
                                 }
                             }
                         }

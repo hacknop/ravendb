@@ -157,7 +157,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce
             while (entry < end)
             {
                 entries++;
-                results.Add(new BlittableJsonReaderObject((byte*) entry + sizeof(ResultHeader), entry->Size, context));
+                results.Add(new BlittableJsonReaderObject((byte*) entry + sizeof(ResultHeader), entry->Size));
                 entry = (ResultHeader*)((byte*)entry + sizeof(ResultHeader) + entry->Size);
             }
             return entries;
@@ -176,7 +176,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce
             while (entry < end)
             {
                 entries++;
-                results.Add(entry->Id, new BlittableJsonReaderObject((byte*)entry + sizeof(ResultHeader), entry->Size, context));
+                results.Add(entry->Id, new BlittableJsonReaderObject((byte*)entry + sizeof(ResultHeader), entry->Size));
                 entry = (ResultHeader*)((byte*)entry + sizeof(ResultHeader) + entry->Size);
             }
             return entries;

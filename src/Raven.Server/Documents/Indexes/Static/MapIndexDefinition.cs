@@ -47,10 +47,15 @@ namespace Raven.Server.Documents.Indexes.Static
         protected override void PersistFields(JsonOperationContext context, BlittableJsonTextWriter writer)
         {
             var builder = IndexDefinition.ToJson();
-            using (var json = context.ReadObject(builder, nameof(IndexDefinition), BlittableJsonDocumentBuilder.UsageMode.ToDisk))
+            var json = context.ReadObject(builder, nameof(IndexDefinition), BlittableJsonDocumentBuilder.UsageMode.ToDisk);
+            try
             {
                 writer.WritePropertyName(nameof(IndexDefinition));
                 writer.WriteObject(json);
+            }
+            finally
+            {
+                json.Dispose(context);
             }
         }
 
@@ -84,24 +89,29 @@ namespace Raven.Server.Documents.Indexes.Static
                 if (result == null)
                     return null;
 
-                using (var reader = context.ReadForDisk(result.Reader.AsStream(), string.Empty))
+                var reader = context.ReadForDisk(result.Reader.AsStream(), string.Empty);
+                try
                 {
-                    var definition = ReadIndexDefinition(reader);
+                    var definition = ReadIndexDefinition(context, reader);
                     definition.Name = ReadName(reader);
                     definition.LockMode = ReadLockMode(reader);
                     definition.Priority = ReadPriority(reader);
 
                     return definition;
                 }
+                finally
+                {
+                    reader.Dispose(context);
+                }
             }
         }
 
-        private static IndexDefinition ReadIndexDefinition(BlittableJsonReaderObject reader)
+        private static IndexDefinition ReadIndexDefinition(JsonOperationContext ctx,BlittableJsonReaderObject reader)
         {
             if (reader.TryGet(nameof(IndexDefinition), out BlittableJsonReaderObject jsonObject) == false || jsonObject == null)
                 throw new InvalidOperationException("No persisted definition");
 
-            return JsonDeserializationServer.IndexDefinition(jsonObject);
+            return JsonDeserializationServer.IndexDefinition(ctx, jsonObject);
         }
     }
 }

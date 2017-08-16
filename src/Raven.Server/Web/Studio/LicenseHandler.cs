@@ -30,7 +30,7 @@ namespace Raven.Server.Web.Studio
             using (var context = JsonOperationContext.ShortTermSingleUse())
             {
                 var json = context.Read(RequestBodyStream(), "license registration form");
-                userInfo = JsonDeserializationServer.UserRegistrationInfo(json);
+                userInfo = JsonDeserializationServer.UserRegistrationInfo(context, json);
             }
 
             await ServerStore.LicenseManager.RegisterForFreeLicense(userInfo).ConfigureAwait(false);
@@ -46,7 +46,7 @@ namespace Raven.Server.Web.Studio
             using (var context = JsonOperationContext.ShortTermSingleUse())
             {
                 var json = context.Read(RequestBodyStream(), "license activation");
-                license = JsonDeserializationServer.License(json);
+                license = JsonDeserializationServer.License(context, json);
             }
 
             await ServerStore.LicenseManager.Activate(license, skipLeaseLicense: false);

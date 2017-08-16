@@ -396,7 +396,7 @@ namespace Raven.Server.Documents.PeriodicBackup
                     //http://issues.hibernatingrhinos.com/issue/RavenDB-7546
 
                     var json = _context.Read(settingsStream, "read database settings for restore");
-                    restoreSettings = JsonDeserializationServer.RestoreSettings(json);
+                    restoreSettings = JsonDeserializationServer.RestoreSettings(_context, json);
 
                     restoreSettings.DatabaseRecord.DatabaseName = _restoreConfiguration.DatabaseName;
                     DatabaseHelper.Validate(_restoreConfiguration.DatabaseName, restoreSettings.DatabaseRecord);

@@ -85,7 +85,7 @@ namespace Raven.Server.Web.System
         {
             foreach (var keyValue in ClusterStateMachine.ReadValuesStartingWith(context, SubscriptionState.SubscriptionPrefix(databaseRecord.DatabaseName)))
             {
-                var subscriptionState = JsonDeserializationClient.SubscriptionState(keyValue.Value);
+                var subscriptionState = JsonDeserializationClient.SubscriptionState(context, keyValue.Value);
                 var tag = databaseRecord.Topology.WhoseTaskIsIt(subscriptionState, store.IsPassive());
 
                 yield return new OngoingTaskSubscription
@@ -398,7 +398,7 @@ namespace Raven.Server.Web.System
                                 break;
                             }
 
-                            var subscriptionState = JsonDeserializationClient.SubscriptionState(doc);
+                            var subscriptionState = JsonDeserializationClient.SubscriptionState(context, doc);
 
                             tag = dbTopology?.WhoseTaskIsIt(subscriptionState, ServerStore.IsPassive());
                             var ongoingSubscriptionTask = new OngoingTaskSubscription
@@ -501,7 +501,7 @@ namespace Raven.Server.Web.System
                     throw new InvalidDataException($"{nameof(UpdateExternalReplicationCommand.Watcher)} was not found.");
                 }
 
-                var watcher = JsonDeserializationClient.ExternalReplication(watcherBlittable);
+                var watcher = JsonDeserializationClient.ExternalReplication(context, watcherBlittable);
                 var (index, _) = await ServerStore.UpdateExternalReplication(Database.Name, watcher);
                 await Database.RachisLogIndexNotifications.WaitForIndexNotification(index);
                 string responsibleNode;

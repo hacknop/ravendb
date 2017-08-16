@@ -118,7 +118,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce
 
                 foreach (var mapResult in mappedResults)
                 {
-                    using (mapResult.Data)
+                    try
                     {
                         resultsCount++;
 
@@ -165,6 +165,10 @@ namespace Raven.Server.Documents.Indexes.MapReduce
 
                             GetResultsStore(reduceKeyHash, indexContext, create: true).Add(id, mapResult.Data);
                         }
+                    }
+                    finally
+                    {
+                        mapResult.Data.Dispose(indexContext);
                     }
                 }
 

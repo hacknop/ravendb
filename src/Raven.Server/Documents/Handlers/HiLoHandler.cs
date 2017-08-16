@@ -118,7 +118,7 @@ namespace Raven.Server.Documents.Handlers
                         var prop = new BlittableJsonReaderObject.PropertyDetails();
                         foreach (var propertyId in hiloDocReader.GetPropertiesByInsertionOrder())
                         {
-                            hiloDocReader.GetPropertyByIndex(propertyId, ref prop);
+                            hiloDocReader.GetPropertyByIndex(context, propertyId, ref prop);
                             if (prop.Name == "Max")
                             {
                                 oldMax = (long)prop.Value;
@@ -133,15 +133,22 @@ namespace Raven.Server.Documents.Handlers
 
                     newDoc["Max"] = oldMax + Capacity;
 
-                    using (var freshHilo = context.ReadObject(newDoc, hiLoDocumentId, BlittableJsonDocumentBuilder.UsageMode.ToDisk))
+                    var freshHilo = context.ReadObject(newDoc, hiLoDocumentId, BlittableJsonDocumentBuilder.UsageMode.ToDisk);
+                    try
+                    {
                         Database.DocumentsStorage.Put(context, hiLoDocumentId, null, freshHilo);
+                    }
+                    finally
+                    {
+                        freshHilo.Dispose(context);
+                    }
 
                     OldMax = oldMax;
                     Prefix = prefix;
                 }
                 finally
                 {
-                    hiloDocReader?.Dispose();
+                    hiloDocReader?.Dispose(context);
                 }
                 return 1;
             }
@@ -192,9 +199,14 @@ namespace Raven.Server.Documents.Handlers
                     ["Max"] = Last
                 };
 
-                using (var hiloReader = context.ReadObject(document.Data, hiLoDocumentId, BlittableJsonDocumentBuilder.UsageMode.ToDisk))
+                var hiloReader = context.ReadObject(document.Data, hiLoDocumentId, BlittableJsonDocumentBuilder.UsageMode.ToDisk);
+                try
                 {
                     Database.DocumentsStorage.Put(context, hiLoDocumentId, null, hiloReader);
+                }
+                finally
+                {
+                    hiloReader.Dispose(context);
                 }
 
                 return 1;

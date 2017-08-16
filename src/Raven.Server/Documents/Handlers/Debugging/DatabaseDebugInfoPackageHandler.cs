@@ -40,11 +40,16 @@ namespace Raven.Server.Documents.Handlers.Debugging
                                 using (var entryStream = entry.Open())
                                 using (var writer = new BlittableJsonTextWriter(context, entryStream))
                                 {
-                                    using (var endpointOutput = await localEndpointClient.InvokeAndReadObjectAsync(route, context, endpointParameters))
+                                    var endpointOutput = await localEndpointClient.InvokeAndReadObjectAsync(route, context, endpointParameters);
+                                    try
                                     {
                                         context.Write(writer, endpointOutput);
                                         writer.Flush();
                                         await entryStream.FlushAsync();
+                                    }
+                                    finally
+                                    {
+                                        endpointOutput.Dispose(context);
                                     }
                                 }
                             }

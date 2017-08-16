@@ -531,7 +531,7 @@ namespace Raven.Server.Documents.ETL
 
                 if (stateBlittable != null)
                 {
-                    return JsonDeserializationClient.EtlProcessState(stateBlittable);
+                    return JsonDeserializationClient.EtlProcessState(context, stateBlittable);
                 }
 
                 return new EtlProcessState();

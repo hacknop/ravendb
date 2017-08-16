@@ -61,7 +61,7 @@ namespace Raven.Server.Documents.ETL.Providers.SQL.Handlers
                 context.OpenReadTransaction();
 
                 var dbDoc = context.ReadForMemory(RequestBodyStream(), "SimulateSqlReplicationResult");
-                var simulateSqlReplication = JsonDeserializationServer.SimulateSqlReplication(dbDoc);
+                var simulateSqlReplication = JsonDeserializationServer.SimulateSqlReplication(context, dbDoc);
                 var result = SqlEtl.SimulateSqlEtl(simulateSqlReplication, Database, ServerStore, context);
 
                 using (var writer = new BlittableJsonTextWriter(context, ResponseBodyStream()))

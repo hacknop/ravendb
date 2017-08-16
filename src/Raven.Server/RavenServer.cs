@@ -393,7 +393,7 @@ namespace Raven.Server
                     }
                     else
                     {
-                        var definition = JsonDeserializationServer.CertificateDefinition(cert);
+                        var definition = JsonDeserializationServer.CertificateDefinition(ctx, cert);
                         authenticationStatus.Definition = definition;
                         if (definition.ServerAdmin)
                         {
@@ -595,7 +595,7 @@ namespace Raven.Server
                         TcpConnectionHeaderMessage header;
                         using (_tcpContextPool.AllocateOperationContext(out JsonOperationContext context))
                         {
-                            using (var headerJson = await context.ParseToMemoryAsync(
+                            var headerJson = await context.ParseToMemoryAsync(
                                 stream,
                                 "tcp-header",
                                 BlittableJsonDocumentBuilder.UsageMode.None,
@@ -605,14 +605,19 @@ namespace Raven.Server
                                 // a maximum of 2 KB for the header is big enough to include any valid header that
                                 // we can currently think of
                                 maxSize: 1024 * 2
-                            ))
+                            );
+                            try
                             {
-                                header = JsonDeserializationClient.TcpConnectionHeaderMessage(headerJson);
+                                header = JsonDeserializationClient.TcpConnectionHeaderMessage(context, headerJson);
                                 if (Logger.IsInfoEnabled)
                                 {
                                     Logger.Info(
                                         $"New {header.Operation} TCP connection to {header.DatabaseName ?? "the cluster node"} from {tcpClient.Client.RemoteEndPoint}");
                                 }
+                            }
+                            finally
+                            {
+                                headerJson.Dispose(context);
                             }
                             bool authSuccessful = TryAuthorize(Configuration, tcp.Stream, header, out var err);
 
@@ -711,13 +716,13 @@ namespace Raven.Server
             {
                 // check for the term          
                 using (_tcpContextPool.AllocateOperationContext(out JsonOperationContext context))
-                using (var headerJson = await context.ParseToMemoryAsync(
-                    tcp.Stream,
-                    "maintenance-heartbeat-header",
-                    BlittableJsonDocumentBuilder.UsageMode.None,
-                    tcp.PinnedBuffer
-                ))
                 {
+                    var headerJson = await context.ParseToMemoryAsync(
+                        tcp.Stream,
+                        "maintenance-heartbeat-header",
+                        BlittableJsonDocumentBuilder.UsageMode.None,
+                        tcp.PinnedBuffer
+                    );
 
                     var maintenanceHeader = JsonDeserializationRachis<ClusterMaintenanceSupervisor.ClusterMaintenanceConnectionHeader>.Deserialize(headerJson);
 

@@ -49,7 +49,7 @@ namespace Raven.Server.Documents.Handlers
 
                     for (int i = 0; i < requests.Length; i++)
                     {
-                        var request = (BlittableJsonReaderObject)requests[i];
+                        var request = (BlittableJsonReaderObject)requests.GetValueTokenTupleByIndex(context, i).Value;
 
                         if (i != 0)
                             writer.WriteComma();
@@ -89,7 +89,7 @@ namespace Raven.Server.Documents.Handlers
                         httpContext.Request.QueryString = new QueryString(query);
                         if (request.TryGet("Headers", out BlittableJsonReaderObject headers))
                         {
-                            foreach (var header in headers.GetPropertyNames())
+                            foreach (var header in headers.GetPropertyNames(context))
                             {
                                 if (headers.TryGet(header, out string value) == false)
                                     continue;
@@ -160,8 +160,15 @@ namespace Raven.Server.Documents.Handlers
 
                             djv[nameof(ExceptionDispatcher.ExceptionSchema.Error)] = e.ToString();
 
-                            using (var json = context.ReadObject(djv, "exception"))
+                            var json = context.ReadObject(djv, "exception");
+                            try
+                            {
                                 writer.WriteObject(json);
+                            }
+                            finally
+                            {
+                                json.Dispose(context);
+                            }
                         }
 
                         writer.WriteComma();

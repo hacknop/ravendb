@@ -10,15 +10,17 @@ namespace Raven.Server.Documents.Indexes.Static
 {
     public class DynamicArray : DynamicObject, IEnumerable<object>
     {
+        private readonly JsonOperationContext _ctx;
         private readonly IEnumerable<object> _inner;
 
-        public DynamicArray(IEnumerable inner)
-            : this(inner.Cast<object>())
+        public DynamicArray(JsonOperationContext ctx, IEnumerable inner)
+            : this(ctx, inner.Cast<object>())
         {
         }
 
-        public DynamicArray(IEnumerable<object> inner)
+        public DynamicArray(JsonOperationContext ctx,IEnumerable<object> inner)
         {
+            _ctx = ctx;
             _inner = inner;
         }
 
@@ -78,7 +80,7 @@ namespace Raven.Server.Documents.Indexes.Static
             var i = (int)indexes[0];
             var resultObject = _inner.ElementAt(i);
 
-            result = TypeConverter.ToDynamicType(resultObject);
+            result = TypeConverter.ToDynamicType(_ctx, resultObject);
             return true;
         }
 
@@ -119,7 +121,7 @@ namespace Raven.Server.Documents.Indexes.Static
 
         public DynamicArrayIterator GetEnumerator()
         {
-            return new DynamicArrayIterator(_inner);
+            return new DynamicArrayIterator(_ctx, _inner);
         }
 
         public bool Contains(object item)
@@ -259,22 +261,22 @@ namespace Raven.Server.Documents.Indexes.Static
 
         public IEnumerable<dynamic> OrderBy(Func<dynamic, dynamic> comparable)
         {
-            return new DynamicArray(Enumerable.OrderBy(this, comparable));
+            return new DynamicArray(_ctx, Enumerable.OrderBy(this, comparable));
         }
 
         public IEnumerable<dynamic> OrderByDescending(Func<dynamic, dynamic> comparable)
         {
-            return new DynamicArray(Enumerable.OrderByDescending(this, comparable));
+            return new DynamicArray(_ctx, Enumerable.OrderByDescending(this, comparable));
         }
 
         public dynamic GroupBy(Func<dynamic, dynamic> keySelector)
         {
-            return new DynamicArray(Enumerable.GroupBy(this, keySelector).Select(x => new DynamicGrouping(x)));
+            return new DynamicArray(_ctx, Enumerable.GroupBy(this, keySelector).Select(x => new DynamicGrouping(_ctx, x)));
         }
 
         public dynamic GroupBy(Func<dynamic, dynamic> keySelector, Func<dynamic, dynamic> selector)
         {
-            return new DynamicArray(Enumerable.GroupBy(this, keySelector, selector).Select(x => new DynamicGrouping(x)));
+            return new DynamicArray(_ctx, Enumerable.GroupBy(this, keySelector, selector).Select(x => new DynamicGrouping(_ctx, x)));
         }
 
         public dynamic Last()
@@ -335,57 +337,57 @@ namespace Raven.Server.Documents.Indexes.Static
 
         public IEnumerable<dynamic> Take(int count)
         {
-            return new DynamicArray(Enumerable.Take(this, count));
+            return new DynamicArray(_ctx, Enumerable.Take(this, count));
         }
 
         public IEnumerable<dynamic> Skip(int count)
         {
-            return new DynamicArray(Enumerable.Skip(this, count));
+            return new DynamicArray(_ctx, Enumerable.Skip(this, count));
         }
 
         public IEnumerable<object> Select(Func<object, object> func)
         {
-            return new DynamicArray(Enumerable.Select(this, func));
+            return new DynamicArray(_ctx, Enumerable.Select(this, func));
         }
 
         public IEnumerable<object> Select(Func<IGrouping<object, object>, object> func)
         {
-            return new DynamicArray(Enumerable.Select(this, o => func((IGrouping<object, object>)o)));
+            return new DynamicArray(_ctx, Enumerable.Select(this, o => func((IGrouping<object, object>)o)));
         }
 
         public IEnumerable<object> Select(Func<object, int, object> func)
         {
-            return new DynamicArray(Enumerable.Select(this, func));
+            return new DynamicArray(_ctx, Enumerable.Select(this, func));
         }
 
         public IEnumerable<object> SelectMany(Func<object, IEnumerable<object>> func)
         {
-            return new DynamicArray(Enumerable.SelectMany(this, func));
+            return new DynamicArray(_ctx, Enumerable.SelectMany(this, func));
         }
 
         public IEnumerable<object> SelectMany(Func<object, IEnumerable<object>> func, Func<object, object, object> selector)
         {
-            return new DynamicArray(Enumerable.SelectMany(this, func, selector));
+            return new DynamicArray(_ctx, Enumerable.SelectMany(this, func, selector));
         }
 
         public IEnumerable<object> SelectMany(Func<object, int, IEnumerable<object>> func)
         {
-            return new DynamicArray(Enumerable.SelectMany(this, func));
+            return new DynamicArray(_ctx, Enumerable.SelectMany(this, func));
         }
 
         public IEnumerable<object> Where(Func<object, bool> func)
         {
-            return new DynamicArray(Enumerable.Where(this, func));
+            return new DynamicArray(_ctx, Enumerable.Where(this, func));
         }
 
         public IEnumerable<object> Where(Func<object, int, bool> func)
         {
-            return new DynamicArray(Enumerable.Where(this, func));
+            return new DynamicArray(_ctx, Enumerable.Where(this, func));
         }
 
         public IEnumerable<object> Distinct()
         {
-            return new DynamicArray(Enumerable.Distinct(this));
+            return new DynamicArray(_ctx, Enumerable.Distinct(this));
         }
 
         public dynamic DefaultIfEmpty(object defaultValue = null)
@@ -395,12 +397,12 @@ namespace Raven.Server.Documents.Indexes.Static
 
         public IEnumerable<dynamic> Except(IEnumerable<dynamic> except)
         {
-            return new DynamicArray(Enumerable.Except(this, except));
+            return new DynamicArray(_ctx, Enumerable.Except(this, except));
         }
 
         public IEnumerable<dynamic> Reverse()
         {
-            return new DynamicArray(Enumerable.Reverse(this));
+            return new DynamicArray(_ctx, Enumerable.Reverse(this));
         }
 
         public bool SequenceEqual(IEnumerable<dynamic> second)
@@ -441,12 +443,12 @@ namespace Raven.Server.Documents.Indexes.Static
 
         public IEnumerable<dynamic> OfType<T>()
         {
-            return new DynamicArray(Enumerable.OfType<T>(this));
+            return new DynamicArray(_ctx, Enumerable.OfType<T>(this));
         }
 
         public IEnumerable<dynamic> Cast<T>()
         {
-            return new DynamicArray(Enumerable.Cast<T>(this));
+            return new DynamicArray(_ctx, Enumerable.Cast<T>(this));
         }
 
         public dynamic ElementAt(int index)
@@ -481,62 +483,64 @@ namespace Raven.Server.Documents.Indexes.Static
 
         public IEnumerable<dynamic> TakeWhile(Func<dynamic, bool> predicate)
         {
-            return new DynamicArray(Enumerable.TakeWhile(this, predicate));
+            return new DynamicArray(_ctx, Enumerable.TakeWhile(this, predicate));
         }
 
         public IEnumerable<dynamic> TakeWhile(Func<dynamic, int, bool> predicate)
         {
-            return new DynamicArray(Enumerable.TakeWhile(this, predicate));
+            return new DynamicArray(_ctx, Enumerable.TakeWhile(this, predicate));
         }
 
         public IEnumerable<dynamic> SkipWhile(Func<dynamic, bool> predicate)
         {
-            return new DynamicArray(Enumerable.SkipWhile(this, predicate));
+            return new DynamicArray(_ctx, Enumerable.SkipWhile(this, predicate));
         }
 
         public IEnumerable<dynamic> SkipWhile(Func<dynamic, int, bool> predicate)
         {
-            return new DynamicArray(Enumerable.SkipWhile(this, predicate));
+            return new DynamicArray(_ctx, Enumerable.SkipWhile(this, predicate));
         }
 
         public IEnumerable<dynamic> Join(IEnumerable<dynamic> items, Func<dynamic, dynamic> outerKeySelector, Func<dynamic, dynamic> innerKeySelector,
                                             Func<dynamic, dynamic, dynamic> resultSelector)
         {
-            return new DynamicArray(Enumerable.Join(this, items, outerKeySelector, innerKeySelector, resultSelector));
+            return new DynamicArray(_ctx, Enumerable.Join(this, items, outerKeySelector, innerKeySelector, resultSelector));
         }
 
         public IEnumerable<dynamic> GroupJoin(IEnumerable<dynamic> items, Func<dynamic, dynamic> outerKeySelector, Func<dynamic, dynamic> innerKeySelector,
                                             Func<dynamic, dynamic, dynamic> resultSelector)
         {
-            return new DynamicArray(Enumerable.GroupJoin(this, items, outerKeySelector, innerKeySelector, resultSelector));
+            return new DynamicArray(_ctx, Enumerable.GroupJoin(this, items, outerKeySelector, innerKeySelector, resultSelector));
         }
 
         public IEnumerable<dynamic> Concat(IEnumerable second)
         {
-            return new DynamicArray(Enumerable.Concat(this, second.Cast<object>()));
+            return new DynamicArray(_ctx, Enumerable.Concat(this, second.Cast<object>()));
         }
 
         public IEnumerable<dynamic> Zip(IEnumerable second, Func<dynamic, dynamic, dynamic> resultSelector)
         {
-            return new DynamicArray(Enumerable.Zip(this, second.Cast<object>(), resultSelector));
+            return new DynamicArray(_ctx, Enumerable.Zip(this, second.Cast<object>(), resultSelector));
         }
 
         public IEnumerable<dynamic> Union(IEnumerable second)
         {
-            return new DynamicArray(Enumerable.Union(this, second.Cast<object>()));
+            return new DynamicArray(_ctx, Enumerable.Union(this, second.Cast<object>()));
         }
 
         public IEnumerable<dynamic> Intersect(IEnumerable second)
         {
-            return new DynamicArray(Enumerable.Intersect(this, second.Cast<object>()));
+            return new DynamicArray(_ctx, Enumerable.Intersect(this, second.Cast<object>()));
         }
 
         public struct DynamicArrayIterator : IEnumerator<object>
         {
+            private readonly JsonOperationContext _ctx;
             private readonly IEnumerator<object> _inner;
 
-            public DynamicArrayIterator(IEnumerable<object> items)
+            public DynamicArrayIterator(JsonOperationContext ctx, IEnumerable<object> items)
             {
+                _ctx = ctx;
                 _inner = items.GetEnumerator();
                 Current = null;
             }
@@ -547,7 +551,7 @@ namespace Raven.Server.Documents.Indexes.Static
                     return false;
 
 
-                Current = TypeConverter.ToDynamicType(_inner.Current);
+                Current = TypeConverter.ToDynamicType(_ctx, _inner.Current);
                 return true;
             }
 
@@ -590,8 +594,8 @@ namespace Raven.Server.Documents.Indexes.Static
         {
             private readonly IGrouping<dynamic, dynamic> _grouping;
 
-            public DynamicGrouping(IGrouping<dynamic, dynamic> grouping)
-                : base(grouping)
+            public DynamicGrouping(JsonOperationContext ctx, IGrouping<dynamic, dynamic> grouping)
+                : base(ctx, grouping)
             {
                 _grouping = grouping;
             }

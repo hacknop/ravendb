@@ -12,6 +12,7 @@ namespace Raven.Server.Documents.Indexes.Static
 {
     public class DynamicBlittableJson : DynamicObject, IEnumerable<object>, IBlittableJsonContainer
     {
+        private JsonOperationContext _ctx;
 
         private const int DocumentIdFieldNameIndex = 0;
         private const int MetadataIdPropertyIndex = 1;
@@ -47,25 +48,27 @@ namespace Raven.Server.Documents.Indexes.Static
             _doc?.EnsureMetadata();
         }
 
-        public DynamicBlittableJson(Document document)
+        public DynamicBlittableJson(JsonOperationContext ctx, Document document)
         {
-            Set(document);
+            Set(ctx, document);
         }
 
-        public DynamicBlittableJson(BlittableJsonReaderObject blittableJson)
+        public DynamicBlittableJson(JsonOperationContext ctx, BlittableJsonReaderObject blittableJson)
         {
+            _ctx = ctx;
             BlittableJson = blittableJson;
         }
 
-        public void Set(Document document)
+        public void Set(JsonOperationContext ctx, Document document)
         {
             _doc = document;
+            _ctx = ctx;
             BlittableJson = document.Data;
         }
 
         public bool ContainsKey(string key)
         {
-            return BlittableJson.GetPropertyNames().Contains(key);
+            return BlittableJson.GetPropertyNames(_ctx).Contains(key);
         }
 
         public override bool TryGetMember(GetMemberBinder binder, out object result)
@@ -168,7 +171,7 @@ namespace Raven.Server.Documents.Indexes.Static
 
         public IEnumerator<object> GetEnumerator()
         {
-            foreach (var propertyName in BlittableJson.GetPropertyNames())
+            foreach (var propertyName in BlittableJson.GetPropertyNames(_ctx))
             {
                 yield return new KeyValuePair<object, object>(propertyName, TypeConverter.ToDynamicType(BlittableJson[propertyName]));
             }

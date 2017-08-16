@@ -24,7 +24,7 @@ namespace Raven.Server.NotificationCenter
 
         private StorageEnvironment _environment;
 
-        private TransactionContextPool _contextPool;
+        public TransactionContextPool ContextPool { get; private set; }
 
         private readonly TableSchema _actionsSchema = new TableSchema();
 
@@ -60,7 +60,7 @@ namespace Raven.Server.NotificationCenter
         public void Initialize(StorageEnvironment environment, TransactionContextPool contextPool)
         {
             _environment = environment;
-            _contextPool = contextPool;
+            ContextPool = contextPool;
 
             using (contextPool.AllocateOperationContext(out TransactionOperationContext context))
             using (var tx = _environment.WriteTransaction(context.PersistentContext))
@@ -76,7 +76,7 @@ namespace Raven.Server.NotificationCenter
             if (Logger.IsInfoEnabled)
                 Logger.Info($"Saving notification '{notification.Id}'.");
 
-            using (_contextPool.AllocateOperationContext(out TransactionOperationContext context))
+            using (ContextPool.AllocateOperationContext(out TransactionOperationContext context))
             using (var tx = context.OpenWriteTransaction())
             {
                 // if previous notification had postponed until value pass this value to newly saved notification
@@ -128,7 +128,7 @@ namespace Raven.Server.NotificationCenter
         {
             using (var scope = new DisposeableScope())
             {
-                scope.EnsureDispose(_contextPool.AllocateOperationContext(out TransactionOperationContext context));
+                scope.EnsureDispose(ContextPool.AllocateOperationContext(out TransactionOperationContext context));
                 scope.EnsureDispose(context.OpenReadTransaction());
 
                 actions = ReadActionsByCreatedAtIndex(context);
@@ -143,7 +143,7 @@ namespace Raven.Server.NotificationCenter
             {
                 RavenTransaction tx;
 
-                scope.EnsureDispose(_contextPool.AllocateOperationContext(out TransactionOperationContext context));
+                scope.EnsureDispose(ContextPool.AllocateOperationContext(out TransactionOperationContext context));
                 scope.EnsureDispose(tx = context.OpenReadTransaction());
 
                 value = Get(id, context, tx);
@@ -167,7 +167,7 @@ namespace Raven.Server.NotificationCenter
             using (var scope = new DisposeableScope())
             {
 
-                scope.EnsureDispose(_contextPool.AllocateOperationContext(out TransactionOperationContext context));
+                scope.EnsureDispose(ContextPool.AllocateOperationContext(out TransactionOperationContext context));
                 scope.EnsureDispose(context.OpenReadTransaction());
 
                 actions = ReadPostponedActionsByPostponedUntilIndex(context, cutoff);
@@ -217,7 +217,7 @@ namespace Raven.Server.NotificationCenter
 
             bool deleteResult;
 
-            using (_contextPool.AllocateOperationContext(out TransactionOperationContext context))
+            using (ContextPool.AllocateOperationContext(out TransactionOperationContext context))
             using (var tx = context.OpenWriteTransaction())
             {
                 var table = tx.InnerTransaction.OpenTable(_actionsSchema, NotificationsSchema.NotificationsTree);
@@ -237,7 +237,7 @@ namespace Raven.Server.NotificationCenter
         {
             var count = 0;
 
-            using (_contextPool.AllocateOperationContext(out TransactionOperationContext context))
+            using (ContextPool.AllocateOperationContext(out TransactionOperationContext context))
             using (context.OpenReadTransaction())
             {
                 foreach (var action in ReadActionsByCreatedAtIndex(context))
@@ -272,13 +272,13 @@ namespace Raven.Server.NotificationCenter
             {
                 CreatedAt = createdAt,
                 PostponedUntil = postponedUntil,
-                Json = new BlittableJsonReaderObject(jsonPtr, size, context)
+                Json = new BlittableJsonReaderObject(jsonPtr, size)
             };
         }
 
         public void ChangePostponeDate(string id, DateTime? postponeUntil)
         {
-            using (_contextPool.AllocateOperationContext(out TransactionOperationContext context))
+            using (ContextPool.AllocateOperationContext(out TransactionOperationContext context))
             using (var tx = context.OpenWriteTransaction())
             {
                 var item = Get(id, context, tx);
@@ -292,7 +292,7 @@ namespace Raven.Server.NotificationCenter
 
                 Store(context.GetLazyString(id), item.CreatedAt, postponeUntil,
                     //we create a copy because we can't update directy from mutated memory
-                    new BlittableJsonReaderObject(itemCopy.Address, item.Json.Size, context)
+                    new BlittableJsonReaderObject(itemCopy.Address, item.Json.Size)
                     , tx);
 
                 tx.Commit();

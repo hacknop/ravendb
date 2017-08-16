@@ -75,7 +75,7 @@ namespace Raven.Server.Documents
 
             var scope = CreateOperationScope(debugMode);
 
-            var run = CreateScriptRun(patch, scope, id); 
+            var run = CreateScriptRun(context, patch, scope, id); 
 
             var command = new PatchDocumentCommand(context, id, changeVector, skipPatchIfChangeVectorMismatch, debugMode, scope, run, Database, Logger, isTest, patch.IsPuttingDocuments || patchIfMissing?.IsPuttingDocuments == true);
 
@@ -83,8 +83,8 @@ namespace Raven.Server.Documents
             {
                 command.PrepareScriptRunIfDocumentMissing = () =>
                 {
-                    CleanupEngine(patch, run.JintEngine, scope);
-                    return CreateScriptRun(patchIfMissing, scope, id);
+                    CleanupEngine(context, patch, run.JintEngine, scope);
+                    return CreateScriptRun(context, patchIfMissing, scope, id);
                 };
             }
 
@@ -97,11 +97,11 @@ namespace Raven.Server.Documents
                                                 "script must be non-null and not empty.");
         }
 
-        private SingleScriptRun CreateScriptRun(PatchRequest patch, PatcherOperationScope scope, string id)
+        private SingleScriptRun CreateScriptRun(JsonOperationContext ctx, PatchRequest patch, PatcherOperationScope scope, string id)
         {
             var run = new SingleScriptRun(this, patch, scope);
 
-            run.Prepare(0);
+            run.Prepare(ctx, 0);
             run.SetDocumentId(id);
 
             return run;

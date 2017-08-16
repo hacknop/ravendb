@@ -14,15 +14,17 @@ namespace Raven.Server.Documents.Patch
 {
     public class BlittableObjectInstance : ObjectInstance
     {
+        private readonly JsonOperationContext _ctx;
         public readonly BlittableJsonReaderObject Blittable;
         public Dictionary<string, (bool IsDeleted, JsValue Value)> Modifications;
 
-        public BlittableObjectInstance(Engine engine, BlittableJsonReaderObject parent) : base(engine)
+        public BlittableObjectInstance(JsonOperationContext ctx, Engine engine, BlittableJsonReaderObject parent) : base(engine)
         {
+            _ctx = ctx;
             Blittable = parent;
         }
 
-        public static JsValue CreateArrayInstanceBasedOnBlittableArray(Engine engine, BlittableJsonReaderArray blittableArray)
+        public static JsValue CreateArrayInstanceBasedOnBlittableArray(JsonOperationContext ctx, Engine engine, BlittableJsonReaderArray blittableArray)
         {
             JsValue returnedValue = engine.Array.Construct(Arguments.Empty);
             var valueAsArrayInstance = returnedValue.TryCast<ArrayInstance>();
@@ -31,7 +33,7 @@ namespace Raven.Server.Documents.Patch
             {
                 var indexAsString = i.ToString();
                 BlittableArrayPropertyDescriptor blittablePropertyDescriptor
-                    = new BlittableArrayPropertyDescriptor(engine, blittableArray, i);
+                    = new BlittableArrayPropertyDescriptor(ctx,engine, blittableArray, i);
                 valueAsArrayInstance.DefineOwnProperty(indexAsString, blittablePropertyDescriptor, true);
             }
 
@@ -42,7 +44,7 @@ namespace Raven.Server.Documents.Patch
         {
             if (Properties.TryGetValue(propertyName, out PropertyDescriptor descriptor) == false)
             {
-                descriptor = new BlittablePropertyDescriptor(Engine, this, propertyName);
+                descriptor = new BlittablePropertyDescriptor(_ctx, Engine, this, propertyName);
                 Properties[propertyName] = descriptor;
             }
             return descriptor;
@@ -56,13 +58,15 @@ namespace Raven.Server.Documents.Patch
 
         public class BlittablePropertyDescriptor : PropertyDescriptor
         {
+            private readonly JsonOperationContext _ctx;
             private readonly Engine _engine;
             public readonly BlittableObjectInstance Self;
             private readonly string _name;
             private JsValue _lastKnownValue;
 
-            public BlittablePropertyDescriptor(Engine engine, BlittableObjectInstance self, string name)
+            public BlittablePropertyDescriptor(JsonOperationContext ctx,Engine engine, BlittableObjectInstance self, string name)
             {
+                _ctx = ctx;
                 _engine = engine;
                 Self = self;
                 _name = name;
@@ -104,7 +108,7 @@ namespace Raven.Server.Documents.Patch
 
                 var propertyDetails = new BlittableJsonReaderObject.PropertyDetails();
 
-                Self.Blittable.GetPropertyByIndex(propertyIndex, ref propertyDetails, true);
+                Self.Blittable.GetPropertyByIndex(_ctx, propertyIndex, ref propertyDetails, true);
 
                 JsValue returnedValue;
                 switch (propertyDetails.Token & BlittableJsonReaderBase.TypesMask)
@@ -128,14 +132,14 @@ namespace Raven.Server.Documents.Patch
                         returnedValue = new JsValue(((LazyCompressedStringValue)propertyDetails.Value).ToString());
                         break;
                     case BlittableJsonToken.StartObject:
-                        returnedValue = new BlittableObjectInstance(_engine, (BlittableJsonReaderObject)propertyDetails.Value);
+                        returnedValue = new BlittableObjectInstance(_ctx, _engine, (BlittableJsonReaderObject)propertyDetails.Value);
                         break;
                     case BlittableJsonToken.StartArray:
                         Enumerable = true; // todo: maybe this should be set earlier
 
                         //returnedValue = new BlittableObjectArrayInstance(_engine, (BlittableJsonReaderArray)propertyDetails.Value);
 
-                        returnedValue = CreateArrayInstanceBasedOnBlittableArray(_engine, propertyDetails.Value as BlittableJsonReaderArray);
+                        returnedValue = CreateArrayInstanceBasedOnBlittableArray(_ctx, _engine, propertyDetails.Value as BlittableJsonReaderArray);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(propertyDetails.Token.ToString());
@@ -199,13 +203,15 @@ namespace Raven.Server.Documents.Patch
 
     public class BlittableArrayPropertyDescriptor : PropertyDescriptor
     {
+        private readonly JsonOperationContext _ctx;
         private readonly Engine _engine;
         private readonly int _index;
         public JsValue LastKnownValue { get; set; }
         private readonly BlittableJsonReaderArray _parent;
 
-        public BlittableArrayPropertyDescriptor(Engine engine, BlittableJsonReaderArray parent, int index)
+        public BlittableArrayPropertyDescriptor(JsonOperationContext ctx, Engine engine, BlittableJsonReaderArray parent, int index)
         {
+            _ctx = ctx;
             _engine = engine;
             _index = index;
             _parent = parent;
@@ -242,7 +248,7 @@ namespace Raven.Server.Documents.Patch
             if (LastKnownValue != null)
                 return LastKnownValue;
 
-            var valueTuple = _parent.GetValueTokenTupleByIndex(_index);
+            var valueTuple = _parent.GetValueTokenTupleByIndex(_ctx,_index);
 
             switch (valueTuple.Item2 & BlittableJsonReaderBase.TypesMask)
             {
@@ -261,12 +267,12 @@ namespace Raven.Server.Documents.Patch
                     return new JsValue(((LazyCompressedStringValue)valueTuple.Item1).ToString());
 
                 case BlittableJsonToken.StartObject:
-                    return new BlittableObjectInstance(_engine, (BlittableJsonReaderObject)valueTuple.Item1);
+                    return new BlittableObjectInstance(_ctx, _engine, (BlittableJsonReaderObject)valueTuple.Item1);
                 case BlittableJsonToken.StartArray:
                     Enumerable = true;
 
                     //return new BlittableObjectArrayInstance(_engine, (BlittableJsonReaderArray)valueTuple.Item1);
-                    return BlittableObjectInstance.CreateArrayInstanceBasedOnBlittableArray(_engine, valueTuple.Item1 as BlittableJsonReaderArray);
+                    return BlittableObjectInstance.CreateArrayInstanceBasedOnBlittableArray(_ctx, _engine, valueTuple.Item1 as BlittableJsonReaderArray);
                 default:
                     return JsValue.Undefined;
             }

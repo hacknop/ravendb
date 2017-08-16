@@ -50,9 +50,9 @@ namespace Raven.Server.Documents.Queries.Faceted
             return (result, facetsEtag);
         }
 
-        public static unsafe (FacetQueryServerSide FacetQuery, long? FacetsEtag) Create(BlittableJsonReaderObject json)
+        public static unsafe (FacetQueryServerSide FacetQuery, long? FacetsEtag) Create(JsonOperationContext ctx,BlittableJsonReaderObject json)
         {
-            var result = JsonDeserializationServer.FacetQuery(json);
+            var result = JsonDeserializationServer.FacetQuery(ctx, json);
 
             if (result.PageSize == 0 && json.TryGet(nameof(PageSize), out int _) == false)
                 result.PageSize = int.MaxValue;

@@ -76,7 +76,7 @@ namespace Raven.Server.Documents.ETL.Providers.SQL
 
             for (var i = 0; i < blittableJsonReaderObject.Count; i++)
             {
-                blittableJsonReaderObject.GetPropertyByIndex(i, ref prop);
+                blittableJsonReaderObject.GetPropertyByIndex(Context, i, ref prop);
 
                 var sqlColumn = new SqlColumn
                 {

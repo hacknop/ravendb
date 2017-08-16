@@ -26,7 +26,7 @@ namespace Raven.Server.Documents.Replication
             public bool Interrupted;
             public void Dispose()
             {
-                Document?.Dispose();
+                Document?.Dispose(Context);
                 ReturnContext?.Dispose();
             }
         }

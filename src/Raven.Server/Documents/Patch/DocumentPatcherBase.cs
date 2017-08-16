@@ -92,12 +92,12 @@ namespace Raven.Server.Documents.Patch
             var run = new SingleScriptRun(this, patch, scope);
             try
             {
-                run.Prepare(document?.Data?.Size ?? 0);
+                run.Prepare(context, document?.Data?.Size ?? 0);
                 run.SetDocumentId(document?.Id ?? documentId);
 
                 scope.PatchObject = scope.ToJsObject(run.JintEngine, document);
 
-                run.Execute();
+                run.Execute(context);
             }
             catch (Exception errorEx)
             {
@@ -106,11 +106,11 @@ namespace Raven.Server.Documents.Patch
             }
         }
 
-        internal void CleanupEngine(PatchRequest patch, Engine engine, PatcherOperationScope scope)
+        internal void CleanupEngine(JsonOperationContext ctx, PatchRequest patch, Engine engine, PatcherOperationScope scope)
         {
             if (patch.Values != null)
             {
-                foreach (var name in patch.Values.GetPropertyNames())
+                foreach (var name in patch.Values.GetPropertyNames(ctx))
                     engine.Global.Delete(name, true);
             }
 
@@ -118,7 +118,7 @@ namespace Raven.Server.Documents.Patch
             RemoveEngineCustomizations(engine, scope);
         }
 
-        private void PrepareEngine(PatchRequest patch, PatcherOperationScope scope, Engine jintEngine, int documentSize)
+        private void PrepareEngine(JsonOperationContext ctx, PatchRequest patch, PatcherOperationScope scope, Engine jintEngine, int documentSize)
         {
             scope.TotalScriptSteps = 0;
             if (documentSize > 0)
@@ -147,7 +147,7 @@ namespace Raven.Server.Documents.Patch
 
                 for (int i = 0; i < patch.Values.Count; i++)
                 {
-                    patch.Values.GetPropertyByIndex(i, ref prop);
+                    patch.Values.GetPropertyByIndex(ctx, i, ref prop);
                     jintEngine.SetValue(prop.Name, scope.ToJsValue(jintEngine, prop));
                 }
             }
@@ -310,16 +310,16 @@ namespace Raven.Server.Documents.Patch
                 }
             }
 
-            public void Prepare(int size)
+            public void Prepare(JsonOperationContext ctx, int size)
             {
-                _parent.PrepareEngine(_patch, _scope, JintEngine, size);
+                _parent.PrepareEngine(ctx, _patch, _scope, JintEngine, size);
             }
 
-            public void Execute()
+            public void Execute(JsonOperationContext ctx)
             {
                 _scope.ActualPatchResult = JintEngine.Invoke("ExecutePatchScript", _scope.PatchObject);
 
-                _parent.CleanupEngine(_patch, JintEngine, _scope);
+                _parent.CleanupEngine(ctx, _patch, JintEngine, _scope);
 
                 OutputLog(JintEngine, _scope);
                 if (_scope.DebugMode)

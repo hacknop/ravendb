@@ -99,7 +99,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Auto
                             break;
                         case AggregationOperation.Sum:
                             object fieldValue;
-                            BlittableJsonTraverser.Default.TryRead(document.Data, indexField.Name, out fieldValue, out _);
+                            BlittableJsonTraverser.Default.TryRead(indexContext, document.Data, indexField.Name, out fieldValue, out _);
 
                             var arrayResult = fieldValue as IEnumerable<object>;
 
@@ -133,7 +133,7 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Auto
                             break;
                         case AggregationOperation.None:
                             object result;
-                            BlittableJsonTraverser.Default.TryRead(document.Data, indexField.Name, out result, out _);
+                            BlittableJsonTraverser.Default.TryRead(indexContext, document.Data, indexField.Name, out result, out _);
 
                             // explicitly adding this even if the value isn't there, as a null
                             mappedResult[indexField.Name] = result;
@@ -147,11 +147,11 @@ namespace Raven.Server.Documents.Indexes.MapReduce.Auto
 
                 foreach (var groupByFieldName in Definition.GroupByFields.Keys)
                 {
-                    BlittableJsonTraverser.Default.TryRead(document.Data, groupByFieldName, out object result, out StringSegment _);
+                    BlittableJsonTraverser.Default.TryRead(indexContext, document.Data, groupByFieldName, out object result, out StringSegment _);
                     // explicitly adding this even if the value isn't there, as a null
                     mappedResult[groupByFieldName] = result;
 
-                    _reduceKeyProcessor.Process(indexContext.Allocator, result);
+                    _reduceKeyProcessor.Process(indexContext, result);
                 }
             }
 

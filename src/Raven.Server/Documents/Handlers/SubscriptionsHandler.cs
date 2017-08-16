@@ -27,7 +27,7 @@ namespace Raven.Server.Documents.Handlers
             using (ContextPool.AllocateOperationContext(out DocumentsOperationContext context))
             {
                 var json = await context.ReadForMemoryAsync(RequestBodyStream(), null);
-                var tryout = JsonDeserializationServer.SubscriptionTryout(json);
+                var tryout = JsonDeserializationServer.SubscriptionTryout(context, json);
 
                 SubscriptionPatchDocument patch = null;
                 if (string.IsNullOrEmpty(tryout.Script) == false)
@@ -100,8 +100,8 @@ namespace Raven.Server.Documents.Handlers
             using (ContextPool.AllocateOperationContext(out DocumentsOperationContext context))
             {
                 var json = await context.ReadForMemoryAsync(RequestBodyStream(), null);
-                var options = JsonDeserializationServer.SubscriptionCreationParams(json);
-                if (Constants.Documents.SubscriptionChagneVectorSpecialStates.TryParse(
+                var options = JsonDeserializationServer.SubscriptionCreationParams(context, json);
+                if (Enum.TryParse(
                     options.ChangeVector, 
                     out Constants.Documents.SubscriptionChagneVectorSpecialStates changeVectorSpecialValue))
                 {

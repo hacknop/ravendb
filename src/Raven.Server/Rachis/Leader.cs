@@ -273,9 +273,17 @@ namespace Raven.Server.Rachis
                 };
                 using (_engine.ContextPool.AllocateOperationContext(out TransactionOperationContext context))
                 using (var tx = context.OpenWriteTransaction())
-                using (var cmd = context.ReadObject(noopCmd, "noop-cmd"))
                 {
-                    _engine.InsertToLeaderLog(context, cmd, RachisEntryFlags.Noop);
+
+                    var cmd = context.ReadObject(noopCmd, "noop-cmd");
+                    try
+                    {
+                        _engine.InsertToLeaderLog(context, cmd, RachisEntryFlags.Noop);
+                    }
+                    finally
+                    {
+                        cmd.Dispose(context);
+                    }
                     tx.Commit();
                 }
                 _newEntry.Set(); //This is so the noop would register right away

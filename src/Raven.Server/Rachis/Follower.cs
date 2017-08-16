@@ -97,7 +97,8 @@ namespace Raven.Server.Rachis
                             }
                             if (entries.Count > 0)
                             {
-                                using (var lastTopology = _engine.AppendToLog(context, entries))
+                                var lastTopology = _engine.AppendToLog(context, entries);
+                                try
                                 {
                                     if (lastTopology != null)
                                     {
@@ -118,6 +119,10 @@ namespace Raven.Server.Rachis
                                             removedFromTopology = true;
                                         }
                                     }
+                                }
+                                finally
+                                {
+                                    lastTopology.Dispose(context);
                                 }
                             }
 
@@ -310,7 +315,8 @@ namespace Raven.Server.Rachis
                     }
                     throw new InvalidOperationException(message);
                 }
-                using (var topologyJson = context.ReadObject(snapshot.Topology, "topology"))
+                var topologyJson = context.ReadObject(snapshot.Topology, "topology");
+                try
                 {
                     if (_engine.Log.IsInfoEnabled)
                     {
@@ -320,6 +326,10 @@ namespace Raven.Server.Rachis
                     var topology = JsonDeserializationRachis<ClusterTopology>.Deserialize(topologyJson);
 
                     RachisConsensus.SetTopology(_engine, context, topology);
+                }
+                finally
+                {
+                    topologyJson.Dispose(context);
                 }
 
                 context.Transaction.Commit();

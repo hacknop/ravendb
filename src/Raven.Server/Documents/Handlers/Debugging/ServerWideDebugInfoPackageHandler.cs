@@ -37,10 +37,15 @@ namespace Raven.Server.Documents.Handlers.Debugging
                     {
                         var localEndpointClient = new LocalEndpointClient(Server);
                         NodeDebugInfoRequestHeader requestHeader;
-                        using (var requestHeaderJson =
-                            await transactionOperationContext.ReadForMemoryAsync(HttpContext.Request.Body, "remote-cluster-info-package/read request header"))
+                        var requestHeaderJson =
+                            await transactionOperationContext.ReadForMemoryAsync(HttpContext.Request.Body, "remote-cluster-info-package/read request header");
+                        try
                         {
-                            requestHeader = JsonDeserializationServer.NodeDebugInfoRequestHeader(requestHeaderJson);
+                            requestHeader = JsonDeserializationServer.NodeDebugInfoRequestHeader(jsonOperationContext, requestHeaderJson);
+                        }
+                        finally
+                        {
+                            requestHeaderJson.Dispose(transactionOperationContext);
                         }
 
                         await WriteServerWide(archive, jsonOperationContext, localEndpointClient);
@@ -242,11 +247,18 @@ namespace Raven.Server.Documents.Handlers.Debugging
                     var entry = archive.CreateEntry(entryRoute);
                     using (var entryStream = entry.Open())
                     using (var writer = new BlittableJsonTextWriter(context, entryStream))
-                    using (var endpointOutput = await localEndpointClient.InvokeAndReadObjectAsync(route, context))
                     {
-                        context.Write(writer, endpointOutput);
-                        writer.Flush();
-                        await entryStream.FlushAsync();
+                        var endpointOutput = await localEndpointClient.InvokeAndReadObjectAsync(route, context);
+                        try
+                        {
+                            context.Write(writer, endpointOutput);
+                            writer.Flush();
+                            await entryStream.FlushAsync();
+                        }
+                        finally
+                        {
+                            endpointOutput.Dispose(context);
+                        }
                     }
                 }
                 catch (Exception e)
@@ -298,11 +310,16 @@ namespace Raven.Server.Documents.Handlers.Debugging
                     using (var entryStream = entry.Open())
                     using (var writer = new BlittableJsonTextWriter(jsonOperationContext, entryStream))
                     {
-                        using (var endpointOutput = await localEndpointClient.InvokeAndReadObjectAsync(route, jsonOperationContext, endpointParameters))
+                        var endpointOutput = await localEndpointClient.InvokeAndReadObjectAsync(route, jsonOperationContext, endpointParameters);
+                        try
                         {
                             jsonOperationContext.Write(writer, endpointOutput);
                             writer.Flush();
                             await entryStream.FlushAsync();
+                        }
+                        finally
+                        {
+                            endpointOutput.Dispose(jsonOperationContext);
                         }
                     }
                 }

@@ -152,7 +152,7 @@ namespace Raven.Server.ServerWide
                     case nameof(DeleteDatabaseCommand):
                     case nameof(ModifyCustomFunctionsCommand):
                     case nameof(UpdateExternalReplicationCommand):
-                    case nameof(PromoteDatabaseNodeCommand):                        
+                    case nameof(PromoteDatabaseNodeCommand):
                     case nameof(ToggleTaskStateCommand):
                     case nameof(AddRavenEtlCommand):
                     case nameof(AddSqlEtlCommand):
@@ -270,7 +270,7 @@ namespace Raven.Server.ServerWide
                     NotifyLeaderAboutError(index, leader, new InvalidOperationException($"The database {databaseName} does not exists"));
                     return;
                 }
-                var doc = new BlittableJsonReaderObject(reader.Read(2, out int size), size, context);
+                var doc = new BlittableJsonReaderObject(reader.Read(2, out int size), size);
 
                 var databaseRecord = JsonDeserializationCluster.DatabaseRecord(doc);
 
@@ -332,8 +332,8 @@ namespace Raven.Server.ServerWide
                 var items = context.Transaction.InnerTransaction.OpenTable(ItemsSchema, Items);
                 using (Slice.From(context.Allocator, "db/" + addDatabaseCommand.Name, out Slice valueName))
                 using (Slice.From(context.Allocator, "db/" + addDatabaseCommand.Name.ToLowerInvariant(), out Slice valueNameLowered))
-                using (var databaseRecordAsJson = EntityToBlittable.ConvertEntityToBlittable(addDatabaseCommand.Record, DocumentConventions.Default, context))
                 {
+                    var databaseRecordAsJson = EntityToBlittable.ConvertEntityToBlittable(addDatabaseCommand.Record, DocumentConventions.Default, context);
                     if (addDatabaseCommand.RaftCommandIndex != null)
                     {
                         if (items.ReadByKey(valueNameLowered, out TableValueReader reader) == false && addDatabaseCommand.RaftCommandIndex != 0)
@@ -378,8 +378,8 @@ namespace Raven.Server.ServerWide
             {
                 using (Slice.From(context.Allocator, keyValue.Key, out Slice databaseValueName))
                 using (Slice.From(context.Allocator, keyValue.Key.ToLowerInvariant(), out Slice databaseValueNameLowered))
-                using (var value = EntityToBlittable.ConvertEntityToBlittable(keyValue.Value, DocumentConventions.Default, context))
                 {
+                    var value = EntityToBlittable.ConvertEntityToBlittable(keyValue.Value, DocumentConventions.Default, context);
                     UpdateValue(index, items, databaseValueNameLowered, databaseValueName, value);
                 }
             }
@@ -425,8 +425,8 @@ namespace Raven.Server.ServerWide
 
                 using (Slice.From(context.Allocator, command.Name, out Slice valueName))
                 using (Slice.From(context.Allocator, command.Name.ToLowerInvariant(), out Slice valueNameLowered))
-                using (var rec = context.ReadObject(command.ValueToJson(), "inner-val"))
                 {
+                    var rec = context.ReadObject(command.ValueToJson(), "inner-val");
                     UpdateValue(index, items, valueNameLowered, valueName, rec);
                 }
             }
@@ -595,7 +595,7 @@ namespace Raven.Server.ServerWide
             var read = localState.Read(key);
             if (read == null)
                 return null;
-            return new BlittableJsonReaderObject(read.Reader.Base, read.Reader.Length, context);
+            return new BlittableJsonReaderObject(read.Reader.Base, read.Reader.Length);
         }
 
         public IEnumerable<string> GetCertificateKeysFromLocalState(TransactionOperationContext context)
@@ -674,7 +674,7 @@ namespace Raven.Server.ServerWide
         private static unsafe Tuple<string, BlittableJsonReaderObject> GetCurrentItem(JsonOperationContext context, Table.TableValueHolder result)
         {
             var ptr = result.Reader.Read(2, out int size);
-            var doc = new BlittableJsonReaderObject(ptr, size, context);
+            var doc = new BlittableJsonReaderObject(ptr, size);
 
             var key = Encoding.UTF8.GetString(result.Reader.Read(1, out size), size);
 
@@ -723,7 +723,7 @@ namespace Raven.Server.ServerWide
             }
 
             var ptr = reader.Read(2, out int size);
-            var doc = new BlittableJsonReaderObject(ptr, size, context);
+            var doc = new BlittableJsonReaderObject(ptr, size);
 
             etag = Bits.SwapBytes(*(long*)reader.Read(3, out size));
             Debug.Assert(size == sizeof(long));
@@ -754,7 +754,7 @@ namespace Raven.Server.ServerWide
             out long etag)
         {
             var ptr = reader.Read(2, out int size);
-            doc = new BlittableJsonReaderObject(ptr, size, context);
+            doc = new BlittableJsonReaderObject(ptr, size);
 
             etag = Bits.SwapBytes(*(long*)reader.Read(3, out size));
             Debug.Assert(size == sizeof(long));
@@ -790,17 +790,15 @@ namespace Raven.Server.ServerWide
                         [nameof(TcpConnectionHeaderMessage.OperationVersion)] = TcpConnectionHeaderMessage.TcpVersions[TcpConnectionHeaderMessage.OperationTypes.Cluster]
                     };
                     using (var writer = new BlittableJsonTextWriter(context, stream))
-                    using (var msgJson = context.ReadObject(msg, "message"))
                     {
+                        var msgJson = context.ReadObject(msg, "message");
                         context.Write(writer, msgJson);
                     }
-                    using (var response = context.ReadForMemory(stream, "cluster-ConnectToPeer-header-response"))
+                    var response = context.ReadForMemory(stream, "cluster-ConnectToPeer-header-response");
+                    var reply = JsonDeserializationServer.TcpConnectionHeaderResponse(context, response);
+                    if (reply.AuthorizationSuccessful == false)
                     {
-                        var reply = JsonDeserializationServer.TcpConnectionHeaderResponse(response);
-                        if (reply.AuthorizationSuccessful == false)
-                        {
-                            throw new AuthorizationException("Unable to access " + url + " because " + reply.Message);
-                        }
+                        throw new AuthorizationException("Unable to access " + url + " because " + reply.Message);
                     }
                 }
                 return stream;
@@ -822,9 +820,14 @@ namespace Raven.Server.ServerWide
 
                 foreach (var key in clusterCertificateKeys)
                 {
-                    using (GetLocalState(context, key))
+                    var obj = GetLocalState(context, key);
+                    try
                     {
                         DeleteLocalState(context, key);
+                    }
+                    finally
+                    {
+                        obj.Dispose(context);
                     }
                 }
                 //There is potentially a lot of work to be done here so we are responding to the change on a separate task.
