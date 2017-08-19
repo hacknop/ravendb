@@ -12,7 +12,6 @@ using Raven.Client.Documents.Operations;
 using Raven.Client.Documents.Queries;
 using Raven.Client.Documents.Smuggler;
 using Raven.Client.Documents.Subscriptions;
-using Raven.Client.Documents.Transformers;
 using Raven.Client.Http;
 using Raven.Client.ServerWide;
 using Raven.Client.ServerWide.ETL;
@@ -148,7 +147,6 @@ namespace TypingsGenerator
             scripter.AddType(typeof(OperationExceptionResult));
             scripter.AddType(typeof(DocumentChange));
             scripter.AddType(typeof(IndexChange));
-            scripter.AddType(typeof(TransformerChange));
             scripter.AddType(typeof(Operations.Operation));
             scripter.AddType(typeof(NewVersionAvailableDetails));
             scripter.AddType(typeof(MessageDetails));
@@ -169,9 +167,6 @@ namespace TypingsGenerator
             // query 
             scripter.AddType(typeof(QueryResult<>));
             scripter.AddType(typeof(PutResult));
-
-            // transformers
-            scripter.AddType(typeof(TransformerDefinition));
 
             // patch
             scripter.AddType(typeof(PatchRequest));
