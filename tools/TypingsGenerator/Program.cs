@@ -272,7 +272,6 @@ namespace TypingsGenerator
 
             // adminJs console
             scripter.AddType(typeof(AdminJsScript));
-            scripter.AddType(typeof(AdminJsScriptResult));
 
             scripter.AddType(typeof(NodeConnectionTestResult));
 
